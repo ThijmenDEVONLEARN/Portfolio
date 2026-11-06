@@ -3,32 +3,71 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const root = document.documentElement;
 const steps = [
   { t: '', s: 'Ik bouw websites en automatiseringen. Scroll en klim mee.' },
-  { t: 'Start', s: 'Software Developer N4 aan het ROC van Twente.' },
-  { t: 'Stage', s: 'Barnhoorn ICT, mijn eerste echte team.' },
-  { t: 'Eigen projecten', s: 'Doelen-canvas, dashboard en mijn Claude-brein.' },
-  { t: 'AI en n8n', s: 'Automatiseringen, nog volop aan het leren.' },
-  { t: 'De top', s: 'Jouw project is de volgende top.', cta: true },
+  {
+    t: 'Start',
+    s: 'Software Developer N4 aan het ROC van Twente.',
+    href: '/over-mij/',
+    go: 'Over mij',
+  },
+  {
+    t: 'Stage',
+    s: 'Barnhoorn ICT, mijn eerste echte team.',
+    href: '/over-mij/#stage',
+    go: 'Mijn stage',
+  },
+  {
+    t: 'Eigen projecten',
+    s: 'Doelen-canvas, dashboard en mijn Claude-brein.',
+    href: '/projecten/',
+    go: 'Bekijk projecten',
+  },
+  {
+    t: 'AI en n8n',
+    s: 'Automatiseringen, nog volop aan het leren.',
+    href: '/ai/',
+    go: 'Zo werk ik met AI',
+  },
+  {
+    t: 'De top',
+    s: 'Jouw project is de volgende top.',
+    href: '/contact/',
+    go: 'Neem contact op',
+    cta: true,
+  },
 ];
 const sub = document.getElementById('sub'),
   dotsEl = document.getElementById('dots'),
   hint = document.getElementById('hint');
-steps.slice(1).forEach(() => dotsEl.appendChild(document.createElement('i')));
+steps.slice(1).forEach((s) => {
+  const a = document.createElement('a');
+  a.href = s.href;
+  a.innerHTML = `<i></i><span>${s.t}</span>`;
+  dotsEl.appendChild(a);
+});
 const dots = [...dotsEl.children];
 let lastStep = -1;
 const setStep = (i) => {
   if (i === lastStep) return;
   lastStep = i;
   const s = steps[i];
-  sub.innerHTML =
-    (s.t ? `<b>${s.t}</b>` : '') +
-    s.s +
-    (s.cta ? '<br><a class="cta" href="/contact/">Neem contact op →</a>' : '');
-  dots.forEach((d, j) => d.classList.toggle('on', j < i));
+  const link = s.href
+    ? `<br><a class="${s.cta ? 'cta' : 'go'}" href="${s.href}">${s.go} →</a>`
+    : '';
+  sub.innerHTML = (s.t ? `<b>${s.t}</b>` : '') + s.s + link;
+  sub.classList.remove('pop');
+  void sub.offsetWidth; // restart the arrival animation
+  if (i) sub.classList.add('pop');
+  dots.forEach((d, j) => {
+    d.classList.toggle('on', j < i);
+    d.classList.toggle('now', j === i - 1);
+  });
+  onStep(i);
 };
 
 // accent picker
 const btns = [...document.querySelectorAll('.picker button')];
 let onAccent = () => {};
+let onStep = () => {};
 const setA = (a) => {
   a === 'oranje' ? root.removeAttribute('data-a') : root.setAttribute('data-a', a);
   btns.forEach((b) => b.setAttribute('aria-pressed', b.dataset.a === a));
@@ -316,6 +355,28 @@ const H = (x, z) => {
   );
   sc.add(halo);
 
+  // milestone markers on the path; the one you are at grows
+  const stepK = (i) => (i < 5 ? 0.06 + ((i - 1) * 0.94) / 5 : 0.999);
+  const markGeo = new THREE.SphereGeometry(0.075, 16, 12);
+  const marks = [1, 2, 3, 4, 5].map((i) => {
+    const m = new THREE.Mesh(
+      markGeo,
+      new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }),
+    );
+    m.position.copy(curve.getPointAt(stepK(i)));
+    m.position.y += 0.06;
+    sc.add(m);
+    return m;
+  });
+  let accColor = new THREE.Color(0xff7a3d);
+  onStep = (now) => {
+    marks.forEach((m, j) => {
+      const i = j + 1;
+      m.scale.setScalar(i === now ? 2.6 : i < now ? 1.3 : 1);
+      m.material.color.copy(i <= now ? accColor : new THREE.Color(0xffffff));
+    });
+  };
+
   // sky as a gradient texture
   const sky = document.createElement('canvas');
   sky.width = 2;
@@ -383,6 +444,8 @@ const H = (x, z) => {
     tubeMat.color = c;
     me.material.color = c;
     halo.material.color = c;
+    accColor = c;
+    onStep(lastStep);
     drawGlow(a);
     render();
   };

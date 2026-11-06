@@ -166,19 +166,76 @@ h1 span {
   position: absolute;
   z-index: 3;
   right: max(22px, env(safe-area-inset-right, 0px));
-  bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
+}
+.steps a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 8px;
+  color: var(--ink);
+  text-decoration: none;
+  font:
+    500 12px 'Geist Mono',
+    monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .steps i {
-  width: 26px;
-  height: 3px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.3);
-  transition: background 0.3s;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  transition:
+    transform 0.3s,
+    background 0.3s,
+    border-color 0.3s;
 }
-.steps i.on {
+.steps a.on i {
   background: var(--acc);
+  border-color: var(--acc);
+}
+.steps a.now i {
+  transform: scale(1.6);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--acc) 30%, transparent);
+}
+.steps span {
+  display: none;
+}
+.steps a.now span {
+  display: inline;
+}
+.steps a:hover i,
+.steps a:focus-visible i {
+  border-color: #fff;
+}
+.go {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--acc);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+}
+.sub.pop {
+  animation: pop 0.45s ease-out;
+}
+@keyframes pop {
+  from {
+    transform: translateY(8px);
+    opacity: 0.4;
+  }
+}
+@media (max-width: 640px) {
+  .steps a.now span {
+    display: none;
+  }
 }
 .hint {
   position: absolute;
