@@ -606,7 +606,7 @@
   grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
   padding-block: var(--space-2xl);
 }
-.index > li:first-child h3 {
+.index > li:first-child h2 {
   font-size: var(--text-3xl);
 }
 .index > li:not(:first-child) {
@@ -614,6 +614,10 @@
 }
 .index > li:not(:first-child) .shot {
   aspect-ratio: 16 / 9;
+}
+.proj h2 {
+  font-size: var(--text-title);
+  line-height: 1.2;
 }
 .proj {
   display: grid;

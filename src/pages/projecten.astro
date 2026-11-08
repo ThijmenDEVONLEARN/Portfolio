@@ -1,0 +1,85 @@
+---
+import Page from '../layouts/Page.astro';
+
+// repo: leave empty until the code is public; the link only shows when it is set.
+const projects = [
+  {
+    title: 'Doelen-ideeën-canvas',
+    live: true,
+    text: 'Voorlopige tekst: wat het doet en voor wie.',
+    tags: ['Node.js', 'JavaScript'],
+    repo: 'https://github.com/ThijmenDEVONLEARN/Doelen-ideen-canvas',
+    slot: 'canvas',
+    alt: 'Het Doelen-canvas: doelen als kaarten op een oneindig canvas, gegroepeerd per thema',
+    img: '/images/canvas.jpg',
+  },
+  {
+    title: 'Persoonlijk dashboard',
+    live: false,
+    text: 'Voorlopige tekst.',
+    tags: [],
+    repo: '',
+    slot: 'dashboard',
+    alt: 'Screenshot van het persoonlijk dashboard',
+  },
+  {
+    title: 'Verkoopbot',
+    live: false,
+    text: 'Voorlopige tekst.',
+    tags: [],
+    repo: '',
+    slot: 'bot',
+    alt: 'Screenshot van de verkoopbot',
+  },
+  {
+    title: 'Claude-brein',
+    live: true,
+    text: 'Voorlopige tekst.',
+    tags: [],
+    repo: '',
+    slot: 'brein',
+    alt: 'Screenshot van het Claude-brein',
+  },
+];
+---
+
+<Page title="Projecten" description="Wat Thijmen gebouwd heeft. Alle code staat open op GitHub.">
+  <div class="container">
+    <div class="head">
+      <h1>Wat ik gebouwd heb.</h1>
+      <p class="lead">Open source, dus de code staat op GitHub. Hier de korte versie.</p>
+    </div>
+    <ol class="sec index ruled">
+      {projects.map((p, i) => (
+        <li>
+          <div class="proj">
+            <span class={p.live ? 'chip-ok' : 'chip-wip'}>
+              {p.live ? 'Live op GitHub' : 'In ontwikkeling'}
+            </span>
+            <h2>{p.title}</h2>
+            <p class="muted">{p.text}</p>
+            {p.tags.length > 0 && (
+              <ul class="tags">
+                {p.tags.map((t) => (
+                  <li>{t}</li>
+                ))}
+              </ul>
+            )}
+            {p.repo && <a href={p.repo}>Code op GitHub</a>}
+          </div>
+          <figure class="shot" data-slot={p.slot} data-alt={p.alt}>
+            {p.img && (
+              <img
+                src={p.img}
+                width="1440"
+                height="900"
+                alt={p.alt}
+                loading={i === 0 ? 'eager' : 'lazy'}
+              />
+            )}
+          </figure>
+        </li>
+      ))}
+    </ol>
+  </div>
+</Page>
