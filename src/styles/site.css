@@ -643,6 +643,7 @@
   margin-bottom: var(--space-xl);
 }
 .seg button {
+  white-space: nowrap;
   min-height: 44px;
   padding: 0 var(--space-md);
   border: 0;
@@ -874,6 +875,9 @@ legend {
   flex-wrap: wrap;
   gap: var(--space-xs);
 }
+.chips label {
+  position: relative;
+}
 .chips input {
   position: absolute;
   opacity: 0;
@@ -987,7 +991,9 @@ legend {
   padding-block: var(--space-2xl);
 }
 .next a {
+  white-space: nowrap;
   font: var(--display-weight) var(--text-section)/1 var(--font-display);
+  font-size: min(var(--text-section), 7.5vw);
   letter-spacing: var(--tracking-display);
   text-decoration: underline;
   text-decoration-color: var(--color-accent);
