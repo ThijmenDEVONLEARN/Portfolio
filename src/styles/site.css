@@ -1094,3 +1094,7 @@ footer .legal {
     transform: none;
   }
 }
+
+.note-fill {
+  margin-top: var(--space-md);
+}
