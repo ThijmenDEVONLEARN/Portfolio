@@ -449,6 +449,7 @@
   aspect-ratio: 4 / 5;
   border-radius: var(--radius-card);
   min-height: 440px;
+  margin: 0;
 }
 .facts > div {
   display: grid;
