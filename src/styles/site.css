@@ -1102,3 +1102,9 @@ footer .legal {
 .note-fill {
   margin-top: var(--space-md);
 }
+.see--narrow {
+  max-width: 640px;
+}
+.actions--after {
+  margin-top: var(--space-2xl);
+}

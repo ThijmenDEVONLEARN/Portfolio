@@ -1,0 +1,88 @@
+---
+import Page from '../layouts/Page.astro';
+
+const wel = ['Voorbeeld', 'Voorbeeld', 'Voorbeeld'];
+const niet = ['Voorbeeld', 'Voorbeeld'];
+const method = ['Zelf denken', 'Samen bouwen', 'Controleren', 'Begrijpen'];
+---
+
+<Page title="AI" description="Hoe Thijmen AI gebruikt als gereedschap, en waar niet voor.">
+  <div class="container">
+    <div class="head">
+      <h1>AI als gereedschap.</h1>
+      <p class="lead">
+        Voorlopige tekst over hoe je met AI werkt en waarom je daar open over bent.
+      </p>
+    </div>
+    <section class="sec" data-switch>
+      <div class="seg" role="tablist" aria-label="Waar ik AI wel en niet voor gebruik">
+        <button role="tab" id="t-wel" aria-selected="true" aria-controls="ai-wel">
+          Waar ik het voor gebruik
+        </button>
+        <button role="tab" id="t-niet" aria-selected="false" aria-controls="ai-niet" tabindex="-1">
+          Waar niet voor
+        </button>
+      </div>
+      <div class="panel" role="tabpanel" id="ai-wel" aria-labelledby="t-wel">
+        <ol class="uses ruled">
+          {wel.map((w, i) => (
+            <li>
+              <span class="num">{i + 1}</span>
+              {w}
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div class="panel" role="tabpanel" id="ai-niet" aria-labelledby="t-niet">
+        <ol class="uses ruled">
+          {niet.map((w, i) => (
+            <li>
+              <span class="num">{i + 1}</span>
+              {w}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+    <section class="sec--l">
+      <h2 class="sec-head">Mijn werkwijze</h2>
+      <ol class="method">
+        {method.map((m) => (
+          <li>
+            <h3>{m}</h3>
+            <p class="muted">Voorlopige tekst.</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+    <div class="sec see see--narrow">
+      <a href="/projecten/">
+        Projecten <small>gemaakt met AI</small>
+      </a>
+    </div>
+  </div>
+</Page>
+
+<script>
+  // Tabs: without script both panels show in order.
+  document.querySelectorAll('[data-switch]').forEach((sw) => {
+    const tabs = [...sw.querySelectorAll<HTMLElement>('[role=tab]')];
+    const pick = (t: HTMLElement) =>
+      tabs.forEach((x) => {
+        const on = x === t;
+        x.setAttribute('aria-selected', String(on));
+        x.tabIndex = on ? 0 : -1;
+        document.getElementById(x.getAttribute('aria-controls')!)!.hidden = !on;
+      });
+    tabs.forEach((t, i) => {
+      t.addEventListener('click', () => pick(t));
+      t.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+        pick(n);
+        n.focus();
+      });
+    });
+    pick(tabs[0]);
+  });
+</script>
