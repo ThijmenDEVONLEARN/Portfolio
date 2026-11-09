@@ -277,8 +277,7 @@ body {
   gap: 4px;
   padding: 5px;
   border-radius: 999px;
-  background: rgba(10, 14, 30, 0.55);
-  backdrop-filter: blur(8px);
+  background: rgba(10, 14, 30, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 .picker button {
