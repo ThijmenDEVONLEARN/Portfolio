@@ -195,6 +195,8 @@ const H = (x, z) => {
   r.setPixelRatio(Q.dpr);
   r.shadowMap.enabled = Q.shadows;
   r.shadowMap.type = THREE.PCFShadowMap;
+  // the shadow map is redrawn only when the sun has moved enough (see render)
+  r.shadowMap.autoUpdate = false;
   r.outputEncoding = THREE.sRGBEncoding;
   r.toneMapping = THREE.ACESFilmicToneMapping;
   r.toneMappingExposure = 1.0;
@@ -465,8 +467,13 @@ const H = (x, z) => {
     tmpD = new THREE.Vector3(),
     tmpS = new THREE.Vector3(),
     FOG_DAY = new THREE.Color('#9fb3c8');
-  let k = 0;
-  function render() {
+  let k = 0,
+    shadowK = -1;
+  function render(settled) {
+    if (r.shadowMap.enabled && (settled ? k !== shadowK : Math.abs(k - shadowK) > 0.015)) {
+      r.shadowMap.needsUpdate = true;
+      shadowK = k;
+    }
     // sky colors
     const e = ss(0, 1, k);
     const top = tmpC.copy(cA.top).lerp(cB.top, e).getStyle(),
@@ -524,9 +531,9 @@ const H = (x, z) => {
     hint.style.opacity = k > 0.03 ? 0 : 1;
     if (chained) watchFrame(now - last);
     last = now;
-    render();
-    root.classList.add('gl-on');
     chained = k !== tk;
+    render(!chained);
+    root.classList.add('gl-on');
     if (chained) req();
   };
   // if the GPU cannot keep up, step down once: lower resolution, no shadows
