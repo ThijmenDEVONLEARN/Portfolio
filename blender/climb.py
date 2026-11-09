@@ -6,7 +6,8 @@ Render the stills headless from the repo root:
     blender -b -P blender/climb.py -- --render l      landscape, public/berg/l/000.webp ...
     blender -b -P blender/climb.py -- --render p      portrait,  public/berg/p/000.webp ...
 
-Options: --samples 128, --scale 100 (percent of the full size), --only 0,55,119, --out <dir>.
+Options: --samples 128, --scale 100 (percent of the full size), --only 0,55,119, --out <dir>,
+--res 1600 (terrain vertices per side), --save <file.blend> to keep the built scene.
 The camera, path and stops follow src/scripts/frames.js and src/scripts/climb.js: COUNT frames,
 frame i shows climb progress k = i / (COUNT - 1).
 """
@@ -21,8 +22,10 @@ from mathutils import Vector, noise
 
 COUNT = 120
 PEAK = Vector((0.0, 1.0))
-SIZE = 64.0  # terrain width; the camera sees about the middle third
-RES = 1400  # vertices per side
+SIZE = 48.0  # width of the detailed terrain; coarser land runs on from it to the horizon
+FULL = 1600
+# vertices per side: all of them for a render, a light scene to look around in the Blender window
+RES = FULL if bpy.app.background else 560
 SETS = {'l': (2560, 1440, 46), 'p': (1080, 2340, 60)}  # width, height, vertical field of view
 ORANGE = (1.0, 0.478, 0.239)
 
@@ -30,6 +33,20 @@ ORANGE = (1.0, 0.478, 0.239)
 def smooth(a, b, x):
     t = np.clip((x - a) / (b - a), 0, 1)
     return t * t * (3 - 2 * t)
+
+
+def blur(a, r, passes=2):
+    """Box blur of a 2D array over 2r+1 cells, run twice so it falls off softly."""
+    for _ in range(passes):
+        for ax in (0, 1):
+            p = np.cumsum(np.pad(a, [(r + 1, r) if i == ax else (0, 0) for i in (0, 1)], mode='edge'), axis=ax)
+            hi = [slice(2 * r + 1, None) if i == ax else slice(None) for i in (0, 1)]
+            lo = [slice(None, -(2 * r + 1)) if i == ax else slice(None) for i in (0, 1)]
+            a = (p[tuple(hi)] - p[tuple(lo)]) / (2 * r + 1)
+    return a
+
+
+assert np.allclose(blur(np.full((9, 7), 3.0), 2), 3.0) and blur(np.eye(9), 1).shape == (9, 9)
 
 
 # ---------- terrain ----------
@@ -46,7 +63,9 @@ def base(x, y):
     # not a single needle vertex
     arete = np.abs(np.cos(1.5 * (th - 0.7))) ** 3
     spread = 1 + (0.22 - 0.38 * arete) * smooth(0.0, 0.9, r)
-    peak = 7.4 * np.exp(-(np.sqrt(r * r + 0.06) * spread / 3.4))
+    d = np.sqrt(r * r + 0.06) * spread
+    # a broad cone carrying a steeper horn: gentler flanks, and a top third that reads as a summit
+    peak = 5.6 * np.exp(-d / 3.8) + 1.6 * np.exp(-((d / 1.3) ** 1.5))
     shoulders = 1.2 * np.exp(-(((x - 3.4) ** 2 + (y + 0.4) ** 2) / 4)) + 1.0 * np.exp(
         -(((x + 3.8) ** 2 + (y - 1.6) ** 2) / 5)
     )
@@ -71,8 +90,14 @@ def base(x, y):
     )
     rough = (rough - rough.mean()) / rough.std()
     hills = field(lambda px, py: noise.fractal(Vector((px * 0.06, py * 0.06, 7.0)), 1.0, 2.0, 4), pts)
-    flank = smooth(0.6, 3.0, mountain) * (1 - smooth(5.8, 7.2, mountain) * 0.6)
-    return mountain + ridge * 0.45 * flank + rough * 0.1 * smooth(2.5, 5.0, mountain) * (1 - smooth(5.6, 6.8, mountain)) + hills * 0.5
+    # the ridges fade out towards the summit, where the polar noise would bunch up into ledges
+    flank = smooth(0.6, 2.6, mountain) * (1 - smooth(4.4, 6.0, mountain) * 0.85) * smooth(0.1, 0.8, r)
+    h = mountain + ridge * 0.45 * flank + rough * 0.1 * smooth(2.0, 4.0, mountain) * (1 - smooth(4.8, 6.0, mountain)) + hills * 0.5
+    if r.max() > 40:
+        # far ranges that fade into the haze on the horizon
+        far = field(lambda px, py: noise.fractal(Vector((px * 0.011, py * 0.011, 2.0)), 1.0, 2.0, 5), pts)
+        h += smooth(40, 130, r) * 16 * np.maximum(far + 0.15, 0)
+    return h
 
 
 def base_meadow(x, y):
@@ -82,15 +107,16 @@ def base_meadow(x, y):
     ).reshape(x.shape) * 0.5
 
 
-def erode(h, drops=2_200_000, batch=200_000, life=60, seed=4):
+def erode(h, rad, drops, life, seed=4):
     """Hydraulic erosion with water droplets (after Hans Theobald Beyer's method): each drop
     runs downhill, picks up sediment where it speeds up and drops it where it slows down.
-    That cuts the branching gullies and fans you see on real mountain flanks."""
+    That cuts the branching gullies and fans you see on real mountain flanks. h is square with
+    the mountain in the middle; the rain falls within rad cells of the centre."""
     rng = np.random.default_rng(seed)
     n = h.shape[0]
     top = h.max()
     g = h / top  # work on 0..1 heights so the constants below are scale free
-    inertia, capacity, min_slope, deposit, erosion, evaporate, gravity = 0.05, 4.0, 0.01, 0.3, 0.3, 0.02, 4.0
+    inertia, capacity, min_slope, deposit, erosion, evaporate, gravity = 0.1, 4.0, 0.01, 0.3, 0.3, 0.015, 4.0
 
     def sample(px, py):
         ix, iy = px.astype(int), py.astype(int)
@@ -101,12 +127,17 @@ def erode(h, drops=2_200_000, batch=200_000, life=60, seed=4):
         return a * (1 - fx) * (1 - fy) + b * fx * (1 - fy) + c * (1 - fx) * fy + d * fx * fy, gx, gy, ix, iy, fx, fy
 
     def spread(ix, iy, fx, fy, amount):
-        flat = g.ravel()
-        for di, dj, w in ((0, 0, (1 - fx) * (1 - fy)), (1, 0, fx * (1 - fy)), (0, 1, (1 - fx) * fy), (1, 1, fx * fy)):
-            np.add.at(flat, (iy + dj) * n + ix + di, amount * w)
+        cell = iy * n + ix
+        at = np.concatenate([cell, cell + 1, cell + n, cell + n + 1])
+        w = np.concatenate([amount * (1 - fx) * (1 - fy), amount * fx * (1 - fy), amount * (1 - fx) * fy, amount * fx * fy])
+        return np.bincount(at, w, n * n).reshape(n, n)
 
+    # drops in one batch do not see each other dig: keep them sparse or they overshoot together
+    batch = int(0.05 * np.pi * rad * rad)
     for done in range(0, drops, batch):
-        px, py = rng.uniform(1, n - 2, batch), rng.uniform(1, n - 2, batch)
+        before = g.copy()
+        ang, far = rng.uniform(0, 2 * np.pi, batch), rad * np.sqrt(rng.uniform(0, 1, batch))
+        px, py = n / 2 + np.cos(ang) * far, n / 2 + np.sin(ang) * far
         dx, dy = np.zeros(batch), np.zeros(batch)
         speed, water, sed = np.ones(batch), np.ones(batch), np.zeros(batch)
         alive = np.ones(batch, bool)
@@ -132,16 +163,15 @@ def erode(h, drops=2_200_000, batch=200_000, life=60, seed=4):
             dep = np.where(dh > 0, np.minimum(dh, s), (s - cap) * deposit)
             dep = np.where((s > cap) | (dh > 0), dep, 0.0)
             ero = np.where((s <= cap) & (dh <= 0), np.minimum((cap - s) * erosion, -dh), 0.0)
-            spread(ix, iy, fx, fy, dep - ero)
+            g += spread(ix, iy, fx, fy, dep - ero)
             sed[idx] = s - dep + ero
             speed[idx] = np.sqrt(np.maximum(speed[idx] ** 2 + dh * gravity, 0))
             water[idx] *= 1 - evaporate
             px[idx], py[idx] = nx, ny
             alive[idx[out]] = False
-        # soften single-cell pits the droplets leave behind
-        pad = np.pad(g, 1, mode='edge')
-        avg = (pad[:-2, 1:-1] + pad[2:, 1:-1] + pad[1:-1, :-2] + pad[1:-1, 2:]) / 4
-        g = g * 0.75 + avg * 0.25
+        # a drop wears an area, not one cell: spread what this batch did over the neighbours, so
+        # the gullies come out free of pits while the ridges between them stay crisp
+        g = before + blur(g - before, 1)
         print(f'erosion {done + batch}/{drops} drops', end='\r')
     print()
     return g * top
@@ -175,29 +205,64 @@ def build_terrain():
     x, y = co[:, 0].reshape(RES, RES), co[:, 1].reshape(RES, RES)
     assert np.allclose(x[0], x[-1]) and np.allclose(y[:, 0], y[:, -1]), 'grid is not row-major in x'
     raw = base(x, y)
-    # erode the mountain only; the meadow around it stays smooth
-    h = raw + (erode(raw) - raw) * smooth(0.3, 1.4, raw - base_meadow(x, y))
+    above = raw - base_meadow(x, y)  # height over the meadow: where the mountain is
+    cell = SIZE / (RES - 1)
+    cell_of = lambda v: np.round((np.asarray(v) + SIZE / 2) / cell).astype(int)
+    cells = lambda units: max(1, round(units / cell))
+    # erode the mountain only, in a window around it; the meadow stays smooth
+    ci, cj, w = cell_of(PEAK.x), cell_of(PEAK.y), cells(12)
+    win = np.s_[cj - w : cj + w, ci - w : ci + w]
+    cut = raw.copy()
+    cut[win] = erode(raw[win], cells(9), drops=int(350_000 * (RES / FULL) ** 2), life=int(140 * RES / FULL))
+    # the water may carve and pile up only so far, so the mountain keeps its shape
+    h = raw + 0.6 * np.tanh((cut - raw) / 0.6) * smooth(0.5, 1.6, above)
+    # at the foot the last of the gullies melt into the meadow, so the grass has no dents
+    h += (blur(h, cells(0.3)) - h) * (1 - smooth(1.2, 2.6, above))
+    # and no pits on the lower slopes: nothing there may lie far below the ground around it
+    h += np.maximum(blur(h, cells(0.25)) - 0.04 - h, 0) * (1 - smooth(2.2, 3.4, above))
     # round off the last few vertices of the summit so it ends in a clean point, not a stump
-    soft = h.copy()
-    for _ in range(4):
-        soft = sum(np.roll(np.roll(soft, i, 0), j, 1) for i in range(-2, 3) for j in range(-2, 3)) / 25
-    h += (soft - h) * (1 - smooth(0.25, 1.1, np.hypot(x - PEAK.x, y - PEAK.y)))
+    h += (blur(h, cells(0.06)) - h) * (1 - smooth(0.1, 0.5, np.hypot(x - PEAK.x, y - PEAK.y)))
+    # a trail: even out the ground under the path so the line is not lost between the crags
+    px, py = path_xy()
+    near = np.zeros_like(h)
+    near[cell_of(py), cell_of(px)] = 1
+    near = blur(near, cells(0.15))
+    near = smooth(0.15, 0.7, near / near.max())
+    h += (blur(h, cells(0.12)) - h) * near
+    assert np.abs(h - raw).max() < 3, 'the erosion ran away'
     TERRAIN['h'] = h
     co[:, 2] = h.ravel()
     me.vertices.foreach_set('co', co.ravel())
     me.polygons.foreach_set('use_smooth', [True] * len(me.polygons))
     me.update()
+
+    # what the material and the detail modifier need to know about each vertex
+    gy, gx = np.gradient(h, cell)
+    steep = 1 - 1 / np.sqrt(1 + gx * gx + gy * gy)  # 0 flat .. 1 vertical
+    wear = h - raw  # below 0 where water cut a gully, above 0 where it left a fan of debris
+    masks = {
+        'hollow': blur(h, cells(0.18)) - h,
+        'wear': wear,
+        # none on the summit: the snow there wants one clean face, not steps
+        'crag': smooth(0.2, 0.45, steep) * smooth(1.0, 2.2, above) * (1 - near) * (1 - smooth(4.5, 5.3, h)),
+        'scree': (smooth(0.01, 0.06, wear) * smooth(0.6, 1.6, above) + 0.02 * smooth(0.2, 0.8, above)) * (1 - near) * (1 - smooth(4.0, 4.6, h)),
+    }
+    for name, a in masks.items():
+        me.attributes.new(name, 'FLOAT', 'POINT').data.foreach_set('value', a.ravel())
     mat = terrain_material()
     ob.data.materials.append(mat)
+    detail_modifier(ob, build_rock())
 
     # the land around it, out to the horizon: coarse and uneroded, just under the detailed part
-    bpy.ops.mesh.primitive_grid_add(x_subdivisions=499, y_subdivisions=499, size=SIZE * 7)
+    bpy.ops.mesh.primitive_grid_add(x_subdivisions=499, y_subdivisions=499, size=448)
     far = bpy.context.active_object
     far.name = 'Land'
     fco = np.empty(len(far.data.vertices) * 3)
     far.data.vertices.foreach_get('co', fco)
     fco = fco.reshape(-1, 3)
-    fco[:, 2] = base(fco[:, 0], fco[:, 1]) - 0.1
+    # it dips well below the detailed part, or it would show through the eroded gullies
+    inside = 1 - smooth(SIZE / 2 - 4, SIZE / 2 - 1, np.maximum(np.abs(fco[:, 0]), np.abs(fco[:, 1])))
+    fco[:, 2] = base(fco[:, 0], fco[:, 1]) - 0.1 - 6 * inside
     far.data.vertices.foreach_set('co', fco.ravel())
     far.data.polygons.foreach_set('use_smooth', [True] * len(far.data.polygons))
     far.data.update()
@@ -231,28 +296,50 @@ def ramp(nt, loc, stops):
     return n
 
 
+def calc(nt, op, a, b=0.0):
+    """A Math node; a and b are numbers or sockets. Works in shader and geometry node trees."""
+    n = node(nt, 'ShaderNodeMath', (0, 0), operation=op)
+    for i, v in enumerate((a, b)):
+        if isinstance(v, (int, float)):
+            n.inputs[i].default_value = v
+        else:
+            nt.links.new(v, n.inputs[i])
+    return n.outputs[0]
+
+
+def remap(nt, v, lo, hi, to=(0.0, 1.0)):
+    n = node(nt, 'ShaderNodeMapRange', (0, 0), **{'From Min': lo, 'From Max': hi, 'To Min': to[0], 'To Max': to[1]})
+    nt.links.new(v, n.inputs['Value'])
+    return n.outputs[0]
+
+
+ROCK = [(0.3, (0.06, 0.043, 0.032)), (0.5, (0.115, 0.083, 0.058)), (0.68, (0.165, 0.135, 0.105)), (0.9, (0.24, 0.215, 0.185))]
+
+
 def terrain_material():
     """Meadow low down; brown rock taking over with height and steepness, grass holding on in
-    the gullies; a dusting of snow on the very top."""
+    the gullies; fans of scree where the water left its debris; snow on the very top."""
     m = bpy.data.materials.new('Terrain')
     m.use_nodes = True
     nt = m.node_tree
     nt.nodes.clear()
     L = nt.links.new
 
-    def math_(op, a, b, loc=(0, 0)):
-        n = node(nt, 'ShaderNodeMath', loc, operation=op)
-        for i, v in enumerate((a, b)):
-            if isinstance(v, (int, float)):
-                n.inputs[i].default_value = v
-            else:
-                L(v, n.inputs[i])
-        return n.outputs[0]
+    def math_(op, a, b):
+        return calc(nt, op, a, b)
 
-    def span(v, lo, hi, loc=(0, 0)):
-        n = node(nt, 'ShaderNodeMapRange', loc, **{'From Min': lo, 'From Max': hi})
-        L(v, n.inputs['Value'])
-        return n.outputs[0]
+    def span(v, lo, hi, to=(0.0, 1.0)):
+        return remap(nt, v, lo, hi, to)
+
+    def total(*terms):
+        acc = None
+        for v, w in terms:
+            t = math_('MULTIPLY', v, w)
+            acc = t if acc is None else math_('ADD', acc, t)
+        return acc
+
+    def attr(name):
+        return node(nt, 'ShaderNodeAttribute', (-1400, -400), attribute_name=name).outputs[2]
 
     def tex(scale, detail=8.0, rough=0.6, loc=(0, 0)):
         n = node(nt, 'ShaderNodeTexNoise', loc, Scale=scale, Detail=detail, Roughness=rough)
@@ -278,60 +365,149 @@ def terrain_material():
     pz = node(nt, 'ShaderNodeSeparateXYZ', (-1200, -100))
     L(geo.outputs['Position'], pz.inputs[0])
 
+    hollow, wear = attr('hollow'), attr('wear')
     steep = math_('SUBTRACT', 1.0, nz.outputs['Z'])  # 0 flat .. 1 vertical
     jitter = math_('SUBTRACT', tex(0.9, 6.0, 0.55), 0.5)
-    # gullies are concave: grass and soil collect there
-    gully = span(geo.outputs['Pointiness'], 0.52, 0.47)
-    height = math_('ADD', pz.outputs['Z'], math_('MULTIPLY', jitter, 2.2))
-    alpine = span(height, 0.8, 3.2)  # 0 in the meadow, 1 high on the mountain
-    rockiness = math_('ADD', math_('MULTIPLY', steep, 1.3), math_('MULTIPLY', alpine, 0.55))
-    rockiness = math_('SUBTRACT', rockiness, math_('MULTIPLY', gully, 0.6))
-    rock = span(math_('ADD', rockiness, math_('MULTIPLY', jitter, 0.4)), 0.55, 0.75)
-    snow = math_('MULTIPLY', span(height, 5.7, 6.5), span(steep, 0.6, 0.4))
+    # gullies are hollow: grass and soil collect there
+    gully = span(hollow, 0.02, 0.1)
+    height = math_('ADD', pz.outputs['Z'], math_('MULTIPLY', jitter, 1.2))
+    alpine = span(height, 1.0, 3.2)  # 0 in the meadow, 1 from the middle of the mountain up
+    high = span(height, 3.2, 5.0)  # up here not even the gullies stay green
+    rock = span(total((steep, 1.1), (alpine, 0.4), (high, 0.5), (jitter, 0.3), (gully, -0.7)), 0.6, 0.8)
+    scree = math_('MULTIPLY', span(wear, 0.02, 0.08), alpine)
+    snow = math_('MULTIPLY', span(total((height, 1.0), (hollow, 2.0)), 4.9, 5.6), span(steep, 0.62, 0.42))
 
-    grass = ramp(nt, (0, 600), [(0.35, (0.055, 0.085, 0.022)), (0.55, (0.1, 0.14, 0.035)), (0.72, (0.17, 0.17, 0.06))])
-    L(tex(2.2, 6.0, 0.5), grass.inputs[0])
+    # broad patches of lighter and darker grass; nothing fine enough to shimmer in the distance
+    grass = ramp(nt, (0, 600), [(0.35, (0.05, 0.08, 0.022)), (0.55, (0.075, 0.11, 0.028)), (0.72, (0.105, 0.125, 0.04))])
+    L(tex(0.35, 5.0, 0.55), grass.inputs[0])
     # higher grass is drier and browner
-    grasscol = mix(math_('MULTIPLY', alpine, 0.6), grass.outputs['Color'], (0.16, 0.13, 0.06))
-    grain = tex(9.0, 12.0, 0.7)
-    # warm grey-brown stone with paler patches
-    rockcol = ramp(nt, (0, 950), [(0.3, (0.07, 0.055, 0.045)), (0.55, (0.15, 0.12, 0.09)), (0.8, (0.24, 0.21, 0.17)), (0.95, (0.42, 0.4, 0.36))])
-    L(grain, rockcol.inputs[0])
+    grasscol = mix(math_('MULTIPLY', alpine, 0.7), grass.outputs['Color'], (0.15, 0.105, 0.05))
+    # warm grey-brown stone in large patches, crossed by darker beds that lie almost level
+    rockcol = ramp(nt, (0, 950), ROCK)
+    L(tex(0.45, 5.0, 0.55), rockcol.inputs[0])
+    lay = node(nt, 'ShaderNodeMapping', (-600, 900))
+    lay.inputs['Scale'].default_value = (0.5, 0.5, 7.0)
+    L(geo.outputs['Position'], lay.inputs['Vector'])
+    beds = node(nt, 'ShaderNodeTexNoise', (-400, 900), Scale=1.0, Detail=3.0, Roughness=0.5)
+    L(lay.outputs[0], beds.inputs['Vector'])
+    stone = mix(span(beds.outputs[0], 0.45, 0.75, (0.0, 0.45)), rockcol.outputs['Color'], (0.04, 0.032, 0.026))
+    # exposed edges weather pale
+    stone = mix(span(hollow, 0.0, -0.12, (0.0, 0.18)), stone, (0.38, 0.33, 0.27))
 
-    col = mix(rock, grasscol, rockcol.outputs['Color'])
+    col = mix(rock, grasscol, stone)
+    col = mix(math_('MULTIPLY', scree, 0.8), col, (0.17, 0.135, 0.1))
+    # hollows sit in shade
+    col = mix(span(hollow, 0.0, 0.2, (0.0, 0.55)), col, (0.01, 0.01, 0.008))
     col = mix(snow, col, (0.8, 0.82, 0.85))
-    ao = node(nt, 'ShaderNodeAmbientOcclusion', (900, 300), Distance=0.8)
-    L(col, ao.inputs['Color'])
-    shaded = node(nt, 'ShaderNodeMix', (1100, 300), data_type='RGBA', blend_type='MULTIPLY')
-    live(shaded.inputs, 'Factor').default_value = 0.6
-    L(col, live(shaded.inputs, 'A'))
-    L(ao.outputs['AO'], live(shaded.inputs, 'B'))
-    L(live(shaded.outputs, 'Result'), bsdf.inputs['Base Color'])
+    L(col, bsdf.inputs['Base Color'])
+    L(span(snow, 0.0, 1.0, (0.92, 0.55)), bsdf.inputs['Roughness'])
 
-    # fine relief: craggy on rock, soft on grass
-    crag = node(nt, 'ShaderNodeTexNoise', (600, -500), noise_type='RIDGED_MULTIFRACTAL', Scale=5.0, Detail=10.0,
-                Roughness=0.6, Lacunarity=2.2)
+    # fine relief: craggy on rock, soft on grass; kept coarse so the stone does not turn to grit
+    crag = node(nt, 'ShaderNodeTexNoise', (600, -500), noise_type='RIDGED_MULTIFRACTAL', Scale=3.5, Detail=4.0,
+                Roughness=0.55, Lacunarity=2.2)
     L(geo.outputs['Position'], crag.inputs['Vector'])
-    relief = math_('ADD', math_('MULTIPLY', tex(40.0, 10.0, 0.6), 0.25), math_('MULTIPLY', rock, crag.outputs['Fac']))
-    bump = node(nt, 'ShaderNodeBump', (1100, -300), Strength=0.35, Distance=0.06)
+    relief = total((tex(18.0, 5.0, 0.55), 0.06), (math_('MULTIPLY', rock, crag.outputs[0]), 0.8))
+    bump = node(nt, 'ShaderNodeBump', (1100, -300), Strength=0.3, Distance=0.05)
     L(relief, bump.inputs['Height'])
     L(bump.outputs['Normal'], bsdf.inputs['Normal'])
     return m
 
 
+def build_rock():
+    """One lumpy boulder; the detail modifier strews copies of it over the scree."""
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=1)
+    ob = bpy.context.active_object
+    ob.name = 'Rock'
+    for v in ob.data.vertices:
+        v.co *= 1 + 0.45 * noise.noise(v.co * 1.1)
+        v.co.z *= 0.65
+    ob.hide_render = ob.hide_viewport = True
+    m = bpy.data.materials.new('Boulder')
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = node(nt, 'ShaderNodeOutputMaterial', (600, 0))
+    bsdf = node(nt, 'ShaderNodeBsdfPrincipled', (300, 0), Roughness=0.9, **{'Specular IOR Level': 0.15})
+    shade = ramp(nt, (0, 0), ROCK)
+    nt.links.new(remap(nt, node(nt, 'ShaderNodeObjectInfo', (-200, 0)).outputs['Random'], 0.0, 1.0, (0.25, 0.7)), shade.inputs[0])
+    nt.links.new(shade.outputs['Color'], bsdf.inputs['Base Color'])
+    nt.links.new(bsdf.outputs[0], out.inputs['Surface'])
+    ob.data.materials.append(m)
+    return ob
+
+
+def detail_modifier(ob, rock):
+    """Geometry Nodes on the terrain: push the steep faces out into crags and stepped beds of
+    rock, and strew boulders over the scree. The masks come from build_terrain."""
+    ng = bpy.data.node_groups.new('Terrain detail', 'GeometryNodeTree')
+    for io in ('INPUT', 'OUTPUT'):
+        ng.interface.new_socket('Geometry', in_out=io, socket_type='NodeSocketGeometry')
+    L = ng.links.new
+
+    def new(kind, **props):
+        return node(ng, kind, (0, 0), **props)
+
+    def attr(name):
+        return live(new('GeometryNodeInputNamedAttribute', data_type='FLOAT', Name=name).outputs, 'Attribute')
+
+    def tex(kind, scale, detail):
+        n = new('ShaderNodeTexNoise', noise_type=kind, Scale=scale, Detail=detail, Roughness=0.55)
+        L(pos, n.inputs['Vector'])
+        return n.outputs[0]
+
+    pos = new('GeometryNodeInputPosition').outputs[0]
+    z = new('ShaderNodeSeparateXYZ')
+    L(pos, z.inputs[0])
+    # beds of rock: each layer bulges out and is cut back under the next, like stacked ledges
+    layer = calc(ng, 'FRACT', calc(ng, 'ADD', calc(ng, 'MULTIPLY', z.outputs['Z'], 4.5), calc(ng, 'MULTIPLY', tex('FBM', 0.5, 2.0), 3.0)))
+    ledge = remap(ng, layer, 0.0, 0.35)
+    ledge.node.interpolation_type = 'SMOOTHSTEP'
+    crags = remap(ng, tex('RIDGED_MULTIFRACTAL', 2.0, 2.0), 0.3, 1.5, (-0.4, 1.0))
+    amount = calc(ng, 'MULTIPLY', attr('crag'), calc(ng, 'ADD', calc(ng, 'MULTIPLY', crags, 0.07), calc(ng, 'MULTIPLY', ledge, 0.06)))
+    push = new('ShaderNodeVectorMath', operation='SCALE')
+    L(new('GeometryNodeInputNormal').outputs[0], push.inputs[0])
+    L(amount, push.inputs['Scale'])
+    move = new('GeometryNodeSetPosition')
+    L(new('NodeGroupInput').outputs[0], move.inputs['Geometry'])
+    L(push.outputs[0], move.inputs['Offset'])
+
+    spots = new('GeometryNodeDistributePointsOnFaces')
+    L(move.outputs[0], spots.inputs['Mesh'])
+    L(calc(ng, 'MULTIPLY', attr('scree'), 45.0), spots.inputs['Density'])
+    info = new('GeometryNodeObjectInfo')
+    info.inputs['Object'].default_value = rock
+    info.inputs['As Instance'].default_value = True
+    # mostly pebbles, now and then a real boulder
+    size = calc(ng, 'ADD', calc(ng, 'MULTIPLY', calc(ng, 'POWER', live(new('FunctionNodeRandomValue', data_type='FLOAT').outputs, 'Value'), 4.0), 0.07), 0.012)
+    turn = new('FunctionNodeRandomValue', data_type='FLOAT_VECTOR')
+    live(turn.inputs, 'Max').default_value = (6.3, 6.3, 6.3)
+    strew = new('GeometryNodeInstanceOnPoints')
+    L(spots.outputs['Points'], strew.inputs['Points'])
+    L(info.outputs['Geometry'], strew.inputs['Instance'])
+    L(live(turn.outputs, 'Value'), strew.inputs['Rotation'])
+    L(size, strew.inputs['Scale'])
+    join = new('GeometryNodeJoinGeometry')
+    L(move.outputs[0], join.inputs[0])
+    L(strew.outputs[0], join.inputs[0])
+    L(join.outputs[0], new('NodeGroupOutput').inputs[0])
+    ob.modifiers.new('Detail', 'NODES').node_group = ng
+
+
 # ---------- path, climber and stops ----------
 
 
-def path_points():
+def path_xy():
     """The spiral from the valley to the summit, same shape as the 3D scene in mountain.js."""
     t = np.linspace(0, 1, 2400)
     a = -2.55 + t * 3.4
     rad = 7.2 * (1 - t) ** 1.1 + 0.05
     # three.js x/z -> Blender x/-y; the peak sits at three z = -1, Blender y = 1
-    x = PEAK.x + np.cos(a) * rad
-    y = PEAK.y - np.sin(a) * rad
-    z = ground(x, y) + 0.09
-    return np.stack([x, y, z], -1)
+    return PEAK.x + np.cos(a) * rad, PEAK.y - np.sin(a) * rad
+
+
+def path_points():
+    x, y = path_xy()
+    return np.stack([x, y, ground(x, y) + 0.09], -1)
 
 
 def at_length(pts, k):
@@ -504,6 +680,7 @@ def setup_render(samples, scale):
     sc.render.engine = 'CYCLES'
     sc.cycles.samples = samples
     sc.cycles.use_denoising = True
+    sc.render.use_persistent_data = True  # the land does not move: build it once for all frames
     sc.render.resolution_percentage = scale
     sc.render.image_settings.file_format = 'WEBP'
     sc.render.image_settings.quality = 80
@@ -534,6 +711,7 @@ def setup_render(samples, scale):
 def build():
     for ob in list(bpy.data.objects):
         bpy.data.objects.remove(ob)
+    bpy.data.orphans_purge(do_recursive=True)  # a rerun in the same session starts clean
     build_terrain()
     build_path(path_points())
 
@@ -542,6 +720,8 @@ def main():
     argv = sys.argv[sys.argv.index('--') + 1 :] if '--' in sys.argv else []
     opt = {argv[i].lstrip('-'): argv[i + 1] for i in range(0, len(argv) - 1, 2)}
     set_ = opt.get('render', 'l')
+    global RES
+    RES = int(opt.get('res', RES))
     import addon_utils
 
     addon_utils.enable('cycles')
@@ -550,10 +730,12 @@ def main():
     setup_render(int(opt.get('samples', 128)), int(opt.get('scale', 100)))
     sc = bpy.context.scene
     sc.frame_set(0)
+    if 'save' in opt:
+        bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(opt['save']))
     if 'render' not in opt:
         return
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    out = opt.get('out', os.path.join(root, 'public', 'berg', set_))
+    out = os.path.abspath(opt.get('out', os.path.join(root, 'public', 'berg', set_)))
     os.makedirs(out, exist_ok=True)
     frames = [int(f) for f in opt['only'].split(',')] if 'only' in opt else range(COUNT)
     for f in frames:
