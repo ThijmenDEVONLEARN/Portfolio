@@ -107,6 +107,13 @@
   margin-left: var(--space-xs);
   min-height: 44px;
 }
+.menu .btn--primary {
+  color: var(--color-accent-ink);
+}
+.menu .btn--primary:hover {
+  background: color-mix(in oklab, var(--color-accent) 88%, var(--color-ink));
+  color: var(--color-accent-ink);
+}
 .menu-sub {
   display: contents;
 }
