@@ -35,8 +35,34 @@ body {
     sans-serif;
 }
 .track {
-  height: 340vh;
+  /* the inner-page base styles load on this page too; keep the mountain dark */
+  background: var(--bg);
+  color: var(--ink);
+  font:
+    16px/1.55 'Geist',
+    system-ui,
+    sans-serif;
+  --run: 240vh;
+  height: calc(100vh + var(--run));
   position: relative;
+}
+/* every small scroll glides to the next stop on the path */
+:root {
+  scroll-snap-type: y mandatory;
+  /* the inner pages pad anchors for their sticky bar; the stops here sit flush */
+  scroll-padding-top: 0;
+}
+.snaps i {
+  position: absolute;
+  left: 0;
+  top: calc(var(--k) * var(--run));
+  width: 1px;
+  height: 1px;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.home-intro {
+  scroll-snap-align: start;
 }
 .stage {
   position: sticky;
@@ -45,12 +71,24 @@ body {
   height: 100svh;
   overflow: hidden;
 }
+.poster img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 #gl {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.gl-on #gl {
+  opacity: 1;
 }
 .fallback {
   position: absolute;
@@ -73,7 +111,7 @@ body {
   background: linear-gradient(rgba(5, 10, 25, 0.45), rgba(5, 10, 25, 0) 40%);
   pointer-events: none;
 }
-nav {
+.stage nav {
   position: absolute;
   inset: 0 0 auto;
   z-index: 3;
@@ -85,25 +123,25 @@ nav {
   padding-right: max(22px, env(safe-area-inset-right, 0px));
   font-size: 14px;
 }
-nav .nm {
+.stage nav .nm {
   color: inherit;
   text-decoration: none;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
-nav .ln {
+.stage nav .ln {
   display: flex;
   gap: 22px;
   color: var(--muted);
 }
-nav .ln a {
+.stage nav .ln a {
   color: inherit;
   text-decoration: none;
 }
-nav .ln a:hover {
+.stage nav .ln a:hover {
   color: var(--ink);
 }
-nav .ln a.c {
+.stage nav .ln a.c {
   color: var(--ink);
   text-decoration: underline;
   text-decoration-color: var(--acc);
@@ -111,7 +149,7 @@ nav .ln a.c {
   text-underline-offset: 5px;
 }
 @media (max-width: 640px) {
-  nav .ln a:not(.c) {
+  .stage nav .ln a:not(.c):not(.w) {
     display: none;
   }
 }
@@ -122,7 +160,7 @@ nav .ln a.c {
   right: max(22px, env(safe-area-inset-right, 0px));
   top: clamp(70px, 12vh, 120px);
 }
-h1 {
+.copy h1 {
   font:
     800 clamp(52px, 12vw, 150px)/0.88 'Unbounded',
     sans-serif;
@@ -130,7 +168,7 @@ h1 {
   letter-spacing: -0.045em;
   text-shadow: 0 2px 30px rgba(0, 0, 0, 0.25);
 }
-h1 span {
+.copy h1 span {
   color: var(--acc);
 }
 .sub {
@@ -249,7 +287,7 @@ h1 span {
   transition: opacity 0.4s;
 }
 .picker {
-  position: fixed;
+  position: absolute;
   z-index: 6;
   left: 50%;
   transform: translateX(-50%);
@@ -258,8 +296,7 @@ h1 span {
   gap: 4px;
   padding: 5px;
   border-radius: 999px;
-  background: rgba(10, 14, 30, 0.55);
-  backdrop-filter: blur(8px);
+  background: rgba(10, 14, 30, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 .picker button {
@@ -281,51 +318,6 @@ h1 span {
 }
 .picker button:focus-visible {
   outline: 2px solid #fff;
-}
-.after {
-  background: #0b1020;
-  color: #e8edf5;
-  padding-block: 80px;
-  padding-left: max(22px, env(safe-area-inset-left, 0px));
-  padding-right: max(22px, env(safe-area-inset-right, 0px));
-}
-.after .in {
-  max-width: 900px;
-  margin: 0 auto;
-}
-.after h2 {
-  font:
-    500 clamp(26px, 4vw, 40px)/1.1 'Unbounded',
-    sans-serif;
-  margin: 0 0 14px;
-  letter-spacing: -0.03em;
-}
-.after p {
-  color: #a9b4c7;
-  max-width: 60ch;
-}
-.pages {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 20px;
-}
-.pages a {
-  color: #e8edf5;
-  text-decoration: none;
-  border: 1px solid #2a3350;
-  padding: 10px 14px;
-  border-radius: 8px;
-}
-.pages a:hover {
-  border-color: var(--acc);
-}
-.perf {
-  font:
-    400 12px 'Geist Mono',
-    monospace;
-  color: #6f7a90;
-  margin-top: 28px;
 }
 @media (prefers-reduced-motion: reduce) {
   * {

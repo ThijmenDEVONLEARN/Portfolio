@@ -91,8 +91,8 @@ const Q = weak
       aa: false,
     }
   : {
-      seg: 260,
-      dpr: Math.min(devicePixelRatio, 1.6),
+      seg: 200,
+      dpr: Math.min(devicePixelRatio, 1.25),
       shadows: true,
       trees: 900,
       aa: true,
@@ -194,7 +194,9 @@ const H = (x, z) => {
   });
   r.setPixelRatio(Q.dpr);
   r.shadowMap.enabled = Q.shadows;
-  r.shadowMap.type = THREE.PCFSoftShadowMap;
+  r.shadowMap.type = THREE.PCFShadowMap;
+  // the shadow map is redrawn only when the sun has moved enough (see render)
+  r.shadowMap.autoUpdate = false;
   r.outputEncoding = THREE.sRGBEncoding;
   r.toneMapping = THREE.ACESFilmicToneMapping;
   r.toneMappingExposure = 1.0;
@@ -296,7 +298,7 @@ const H = (x, z) => {
     ? new THREE.MeshLambertMaterial({ color: C('#244a22') })
     : new THREE.MeshStandardMaterial({ color: C('#244a22'), roughness: 1 });
   const trees = new THREE.InstancedMesh(tg, tm, Q.trees);
-  trees.castShadow = Q.shadows;
+  // trees only receive shadows: casting 900 instances into the shadow map costs more than it shows
   const m4 = new THREE.Matrix4(),
     q = new THREE.Quaternion(),
     sv = new THREE.Vector3();
@@ -458,14 +460,25 @@ const H = (x, z) => {
     cam.fov = w < h ? 60 : 46;
     cam.updateProjectionMatrix();
   };
-  const tmpC = new THREE.Color();
-  let k = 0;
-  function render() {
+  // reused every frame so scrolling does not churn the garbage collector
+  const tmpC = new THREE.Color(),
+    tmpM = new THREE.Color(),
+    tmpH = new THREE.Color(),
+    tmpD = new THREE.Vector3(),
+    tmpS = new THREE.Vector3(),
+    FOG_DAY = new THREE.Color('#9fb3c8');
+  let k = 0,
+    shadowK = -1;
+  function render(settled) {
+    if (r.shadowMap.enabled && (settled ? k !== shadowK : Math.abs(k - shadowK) > 0.015)) {
+      r.shadowMap.needsUpdate = true;
+      shadowK = k;
+    }
     // sky colors
     const e = ss(0, 1, k);
     const top = tmpC.copy(cA.top).lerp(cB.top, e).getStyle(),
-      mid = cA.mid.clone().lerp(cB.mid, e).getStyle(),
-      hor = cA.hor.clone().lerp(cB.hor, e);
+      mid = tmpM.copy(cA.mid).lerp(cB.mid, e).getStyle(),
+      hor = tmpH.copy(cA.hor).lerp(cB.hor, e);
     const g = sx.createLinearGradient(0, 0, 0, 256);
     g.addColorStop(0, top);
     g.addColorStop(0.55, mid);
@@ -474,7 +487,7 @@ const H = (x, z) => {
     sx.fillStyle = g;
     sx.fillRect(0, 0, 2, 256);
     skyTex.needsUpdate = true;
-    fog.color.copy(hor).lerp(new THREE.Color('#9fb3c8'), e * 0.5);
+    fog.color.copy(hor).lerp(FOG_DAY, e * 0.5);
     // camera
     const port = cam.aspect < 1,
       ca = -2.3 + k * 3.4,
@@ -486,10 +499,8 @@ const H = (x, z) => {
     );
     cam.lookAt(PEAK.x, 1.2 + k * 2.4, PEAK.z);
     // sun behind the mountain, rising
-    const dir = new THREE.Vector3(PEAK.x - cam.position.x, 0, PEAK.z - cam.position.z).normalize();
-    const sp = new THREE.Vector3(PEAK.x, 0, PEAK.z)
-      .addScaledVector(dir, 30)
-      .add(new THREE.Vector3(dir.z * 8, 0, -dir.x * 8));
+    const dir = tmpD.set(PEAK.x - cam.position.x, 0, PEAK.z - cam.position.z).normalize();
+    const sp = tmpS.set(PEAK.x + dir.x * 30 + dir.z * 8, 0, PEAK.z + dir.z * 30 - dir.x * 8);
     sp.y = -1 + k * 8.5;
     sunSpr.position.copy(sp);
     sun.position.copy(sp);
@@ -508,27 +519,68 @@ const H = (x, z) => {
   // render on demand only
   // ease k toward the scroll position so the camera glides instead of jumping
   let queued = false;
-  const tick = () => {
+  const tick = (now) => {
     queued = false;
+    if (!inView) return;
     const tk = reduce ? 1 : prog();
-    k += (tk - k) * 0.2;
+    // ease by elapsed time, not per frame, so the glide keeps its speed when frames drop
+    const dt = chained ? Math.min(100, now - last) : 1000 / 60;
+    k += (tk - k) * (1 - Math.pow(0.8, dt / (1000 / 60)));
     if (Math.abs(tk - k) < 0.0004) k = tk;
     setStep(stepAt(k));
     hint.style.opacity = k > 0.03 ? 0 : 1;
-    render();
-    if (k !== tk) req();
+    if (chained) watchFrame(now - last);
+    last = now;
+    chained = k !== tk;
+    setMoving(chained);
+    render(!chained);
+    root.classList.add('gl-on');
+    if (chained) req();
+  };
+  // if the GPU cannot keep up, step down once: lower resolution, no shadows
+  // measured between back-to-back animation frames, so GPU time counts too
+  let slow = 0,
+    frames = 0,
+    last = 0,
+    chained = false,
+    lowered = false;
+  const watchFrame = (ms) => {
+    if (lowered || ++frames < 10) return;
+    slow = ms > 25 ? slow + 1 : Math.max(0, slow - 1);
+    if (slow < 8) return;
+    lowered = true;
+    r.setPixelRatio(1);
+    r.shadowMap.enabled = false;
+    sun.castShadow = false;
+    sc.traverse((o) => o.material && (o.material.needsUpdate = true));
+    size();
+  };
+  // draw fewer pixels while the camera moves; the frame it stops on is sharp again
+  let moving = false;
+  const setMoving = (m) => {
+    if (m === moving || lowered) return;
+    moving = m;
+    r.setPixelRatio(m ? Math.max(0.8, Q.dpr * 0.7) : Q.dpr);
   };
   const req = () => {
     if (queued) return;
     queued = true;
     requestAnimationFrame(tick);
   };
+  // the page below the mountain scrolls too: draw nothing while the canvas is off screen
+  let inView = true;
+  new IntersectionObserver(([e]) => {
+    inView = e.isIntersecting;
+    if (inView) req();
+  }).observe(cv);
   addEventListener('scroll', req, { passive: true });
   addEventListener('resize', () => {
     size();
     req();
   });
   size();
+  // compile every shader now, so the first scroll does not stall on it
+  r.compile(sc, cam);
   onAccent();
   req();
   path.geometry.setDrawRange(0, 0);

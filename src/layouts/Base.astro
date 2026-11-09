@@ -15,10 +15,12 @@ const { title, description = 'Thijmen bouwt websites en automatiseringen.' } = A
     <meta name="description" content={description} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
-    />
+    <slot name="head">
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
+      />
+    </slot>
   </head>
   <body>
     <slot />
