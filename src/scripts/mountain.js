@@ -512,15 +512,16 @@ const H = (x, z) => {
   // render on demand only
   // ease k toward the scroll position so the camera glides instead of jumping
   let queued = false;
-  const tick = () => {
+  const tick = (now) => {
     queued = false;
     if (!inView) return;
     const tk = reduce ? 1 : prog();
-    k += (tk - k) * 0.2;
+    // ease by elapsed time, not per frame, so the glide keeps its speed when frames drop
+    const dt = chained ? Math.min(100, now - last) : 1000 / 60;
+    k += (tk - k) * (1 - Math.pow(0.8, dt / (1000 / 60)));
     if (Math.abs(tk - k) < 0.0004) k = tk;
     setStep(stepAt(k));
     hint.style.opacity = k > 0.03 ? 0 : 1;
-    const now = performance.now();
     if (chained) watchFrame(now - last);
     last = now;
     render();
