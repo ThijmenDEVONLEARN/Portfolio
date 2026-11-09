@@ -1,102 +1,36 @@
 import * as THREE from 'three';
-const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const root = document.documentElement;
-const steps = [
-  { t: '', s: 'Ik bouw websites en automatiseringen. Scroll en klim mee.' },
-  {
-    t: 'Start',
-    s: 'Software Developer N4 aan het ROC van Twente.',
-    href: '/over-mij/',
-    go: 'Over mij',
-  },
-  {
-    t: 'Stage',
-    s: 'Barnhoorn ICT, mijn eerste echte team.',
-    href: '/over-mij/#stage',
-    go: 'Mijn stage',
-  },
-  {
-    t: 'Eigen projecten',
-    s: 'Doelen-canvas, dashboard en mijn Claude-brein.',
-    href: '/projecten/',
-    go: 'Bekijk projecten',
-  },
-  {
-    t: 'AI en n8n',
-    s: 'Automatiseringen, nog volop aan het leren.',
-    href: '/ai/',
-    go: 'Zo werk ik met AI',
-  },
-  {
-    t: 'De top',
-    s: 'Jouw project is de volgende top.',
-    href: '/contact/',
-    go: 'Neem contact op',
-    cta: true,
-  },
-];
-const sub = document.getElementById('sub'),
-  dotsEl = document.getElementById('dots'),
-  hint = document.getElementById('hint');
-steps.slice(1).forEach((s) => {
-  const a = document.createElement('a');
-  a.href = s.href;
-  a.innerHTML = `<i></i><span>${s.t}</span>`;
-  dotsEl.appendChild(a);
-});
-const dots = [...dotsEl.children];
-let lastStep = -1;
-const setStep = (i) => {
-  if (i === lastStep) return;
-  lastStep = i;
-  const s = steps[i];
-  const link = s.href
-    ? `<br><a class="${s.cta ? 'cta' : 'go'}" href="${s.href}">${s.go} →</a>`
-    : '';
-  sub.innerHTML = (s.t ? `<b>${s.t}</b>` : '') + s.s + link;
-  sub.classList.remove('pop');
-  void sub.offsetWidth; // restart the arrival animation
-  if (i) sub.classList.add('pop');
-  dots.forEach((d, j) => {
-    d.classList.toggle('on', j < i);
-    d.classList.toggle('now', j === i - 1);
-  });
-  onStep(i);
-};
-
-// accent picker
-const btns = [...document.querySelectorAll('.picker button')];
-let onAccent = () => {};
-let onStep = () => {};
-const setA = (a) => {
-  a === 'oranje' ? root.removeAttribute('data-a') : root.setAttribute('data-a', a);
-  btns.forEach((b) => b.setAttribute('aria-pressed', b.dataset.a === a));
-  try {
-    localStorage.setItem('acc3d', a);
-  } catch (e) {}
-  onAccent();
-};
-btns.forEach((b) => (b.onclick = () => setA(b.dataset.a)));
+import { reduce, root, setStep, setOnStep, currentStep, showHint, prog, stepAt } from './climb.js';
 
 // device tier: phones and weak devices get a lighter scene
 const small = matchMedia('(max-width: 760px)').matches;
 const weak =
   small || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
-const Q = weak
+// ?hq: the offline render for the home page stills (scripts/render-frames.mjs), at full detail
+const hq = new URLSearchParams(location.search).has('hq');
+const Q = hq
   ? {
-      seg: 140,
-      dpr: Math.min(devicePixelRatio, 1.5),
-      shadows: false,
-      trees: 260,
-      aa: false,
-    }
-  : {
-      seg: 200,
-      dpr: Math.min(devicePixelRatio, 1.25),
+      seg: 480,
+      dpr: devicePixelRatio,
       shadows: true,
+      shadowSize: 4096,
       trees: 900,
       aa: true,
-    };
+    }
+  : weak
+    ? {
+        seg: 140,
+        dpr: Math.min(devicePixelRatio, 1.5),
+        shadows: false,
+        trees: 260,
+        aa: false,
+      }
+    : {
+        seg: 200,
+        dpr: Math.min(devicePixelRatio, 1.25),
+        shadows: true,
+        trees: 900,
+        aa: true,
+      };
 
 // noise
 const perm = new Uint8Array(512);
@@ -194,7 +128,7 @@ const H = (x, z) => {
   });
   r.setPixelRatio(Q.dpr);
   r.shadowMap.enabled = Q.shadows;
-  r.shadowMap.type = THREE.PCFShadowMap;
+  r.shadowMap.type = hq ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   // the shadow map is redrawn only when the sun has moved enough (see render)
   r.shadowMap.autoUpdate = false;
   r.outputEncoding = THREE.sRGBEncoding;
@@ -277,7 +211,7 @@ const H = (x, z) => {
   detail.wrapS = detail.wrapT = THREE.RepeatWrapping;
   detail.repeat.set(36, 36);
   detail.encoding = THREE.sRGBEncoding;
-  detail.anisotropy = Math.min(4, r.capabilities.getMaxAnisotropy());
+  detail.anisotropy = Math.min(hq ? 16 : 4, r.capabilities.getMaxAnisotropy());
   const mat = weak
     ? new THREE.MeshLambertMaterial({ vertexColors: true, map: detail })
     : new THREE.MeshStandardMaterial({
@@ -330,7 +264,8 @@ const H = (x, z) => {
     pts.push(new THREE.Vector3(x, H(x, z) + 0.05, z));
   }
   const curve = new THREE.CatmullRomCurve3(pts);
-  const tube = new THREE.TubeGeometry(curve, weak ? 240 : 480, 0.032, 5, false);
+  const radial = hq ? 12 : 5;
+  const tube = new THREE.TubeGeometry(curve, hq ? 960 : weak ? 240 : 480, 0.032, radial, false);
   const tubeMat = new THREE.MeshBasicMaterial({ color: 0xff7a3d, toneMapped: false });
   const path = new THREE.Mesh(tube, tubeMat);
   sc.add(path);
@@ -340,7 +275,7 @@ const H = (x, z) => {
   );
   sc.add(ghost);
   const idxCount = tube.index.count,
-    segTris = 5 * 6;
+    segTris = radial * 6;
   const me = new THREE.Mesh(
     new THREE.SphereGeometry(0.09, 16, 12),
     new THREE.MeshBasicMaterial({ color: 0xff7a3d, toneMapped: false }),
@@ -371,13 +306,14 @@ const H = (x, z) => {
     return m;
   });
   let accColor = new THREE.Color(0xff7a3d);
-  onStep = (now) => {
+  const growMarks = (now) => {
     marks.forEach((m, j) => {
       const i = j + 1;
       m.scale.setScalar(i === now ? 2.6 : i < now ? 1.3 : 1);
       m.material.color.copy(i <= now ? accColor : new THREE.Color(0xffffff));
     });
   };
+  setOnStep(growMarks);
 
   // sky as a gradient texture
   const sky = document.createElement('canvas');
@@ -423,7 +359,7 @@ const H = (x, z) => {
   const sun = new THREE.DirectionalLight(0xffffff, 1);
   sun.castShadow = Q.shadows;
   if (Q.shadows) {
-    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.mapSize.set(Q.shadowSize || 1024, Q.shadowSize || 1024);
     Object.assign(sun.shadow.camera, {
       left: -13,
       right: 13,
@@ -440,14 +376,15 @@ const H = (x, z) => {
   const hemi = new THREE.HemisphereLight(0xffffff, 0x2f3b22, 0.5);
   sc.add(hemi);
 
-  onAccent = () => {
+  // the path, the climber and the sun glow take the page accent
+  const applyAccent = () => {
     const a = getComputedStyle(root).getPropertyValue('--acc').trim();
     const c = new THREE.Color(a).convertSRGBToLinear();
     tubeMat.color = c;
     me.material.color = c;
     halo.material.color = c;
     accColor = c;
-    onStep(lastStep);
+    growMarks(currentStep());
     drawGlow(a);
     render();
   };
@@ -528,7 +465,7 @@ const H = (x, z) => {
     k += (tk - k) * (1 - Math.pow(0.8, dt / (1000 / 60)));
     if (Math.abs(tk - k) < 0.0004) k = tk;
     setStep(stepAt(k));
-    hint.style.opacity = k > 0.03 ? 0 : 1;
+    showHint(k);
     if (chained) watchFrame(now - last);
     last = now;
     chained = k !== tk;
@@ -545,7 +482,7 @@ const H = (x, z) => {
     chained = false,
     lowered = false;
   const watchFrame = (ms) => {
-    if (lowered || ++frames < 10) return;
+    if (hq || lowered || ++frames < 10) return;
     slow = ms > 25 ? slow + 1 : Math.max(0, slow - 1);
     if (slow < 8) return;
     lowered = true;
@@ -558,7 +495,7 @@ const H = (x, z) => {
   // draw fewer pixels while the camera moves; the frame it stops on is sharp again
   let moving = false;
   const setMoving = (m) => {
-    if (m === moving || lowered) return;
+    if (hq || m === moving || lowered) return;
     moving = m;
     r.setPixelRatio(m ? Math.max(0.8, Q.dpr * 0.7) : Q.dpr);
   };
@@ -581,22 +518,7 @@ const H = (x, z) => {
   size();
   // compile every shader now, so the first scroll does not stall on it
   r.compile(sc, cam);
-  onAccent();
+  applyAccent();
   req();
   path.geometry.setDrawRange(0, 0);
 })();
-
-function prog() {
-  const t = document.getElementById('track');
-  const m = t.offsetHeight - innerHeight;
-  return m > 0 ? Math.min(1, Math.max(0, scrollY / m)) : 0;
-}
-function stepAt(k) {
-  return k < 0.06 ? 0 : Math.min(5, 1 + Math.floor(((k - 0.06) / 0.94) * 5 * 0.999));
-}
-let sv = null;
-try {
-  sv = localStorage.getItem('acc3d');
-} catch (e) {}
-setA(sv || 'oranje');
-setStep(0);
