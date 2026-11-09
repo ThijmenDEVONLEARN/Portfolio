@@ -5,21 +5,32 @@ import { reduce, root, setStep, setOnStep, currentStep, showHint, prog, stepAt }
 const small = matchMedia('(max-width: 760px)').matches;
 const weak =
   small || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
-const Q = weak
+// ?hq: the offline render for the home page stills (scripts/render-frames.mjs), at full detail
+const hq = new URLSearchParams(location.search).has('hq');
+const Q = hq
   ? {
-      seg: 140,
-      dpr: Math.min(devicePixelRatio, 1.5),
-      shadows: false,
-      trees: 260,
-      aa: false,
-    }
-  : {
-      seg: 200,
-      dpr: Math.min(devicePixelRatio, 1.25),
+      seg: 480,
+      dpr: devicePixelRatio,
       shadows: true,
+      shadowSize: 4096,
       trees: 900,
       aa: true,
-    };
+    }
+  : weak
+    ? {
+        seg: 140,
+        dpr: Math.min(devicePixelRatio, 1.5),
+        shadows: false,
+        trees: 260,
+        aa: false,
+      }
+    : {
+        seg: 200,
+        dpr: Math.min(devicePixelRatio, 1.25),
+        shadows: true,
+        trees: 900,
+        aa: true,
+      };
 
 // noise
 const perm = new Uint8Array(512);
@@ -117,7 +128,7 @@ const H = (x, z) => {
   });
   r.setPixelRatio(Q.dpr);
   r.shadowMap.enabled = Q.shadows;
-  r.shadowMap.type = THREE.PCFShadowMap;
+  r.shadowMap.type = hq ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   // the shadow map is redrawn only when the sun has moved enough (see render)
   r.shadowMap.autoUpdate = false;
   r.outputEncoding = THREE.sRGBEncoding;
@@ -200,7 +211,7 @@ const H = (x, z) => {
   detail.wrapS = detail.wrapT = THREE.RepeatWrapping;
   detail.repeat.set(36, 36);
   detail.encoding = THREE.sRGBEncoding;
-  detail.anisotropy = Math.min(4, r.capabilities.getMaxAnisotropy());
+  detail.anisotropy = Math.min(hq ? 16 : 4, r.capabilities.getMaxAnisotropy());
   const mat = weak
     ? new THREE.MeshLambertMaterial({ vertexColors: true, map: detail })
     : new THREE.MeshStandardMaterial({
@@ -253,7 +264,8 @@ const H = (x, z) => {
     pts.push(new THREE.Vector3(x, H(x, z) + 0.05, z));
   }
   const curve = new THREE.CatmullRomCurve3(pts);
-  const tube = new THREE.TubeGeometry(curve, weak ? 240 : 480, 0.032, 5, false);
+  const radial = hq ? 12 : 5;
+  const tube = new THREE.TubeGeometry(curve, hq ? 960 : weak ? 240 : 480, 0.032, radial, false);
   const tubeMat = new THREE.MeshBasicMaterial({ color: 0xff7a3d, toneMapped: false });
   const path = new THREE.Mesh(tube, tubeMat);
   sc.add(path);
@@ -263,7 +275,7 @@ const H = (x, z) => {
   );
   sc.add(ghost);
   const idxCount = tube.index.count,
-    segTris = 5 * 6;
+    segTris = radial * 6;
   const me = new THREE.Mesh(
     new THREE.SphereGeometry(0.09, 16, 12),
     new THREE.MeshBasicMaterial({ color: 0xff7a3d, toneMapped: false }),
@@ -347,7 +359,7 @@ const H = (x, z) => {
   const sun = new THREE.DirectionalLight(0xffffff, 1);
   sun.castShadow = Q.shadows;
   if (Q.shadows) {
-    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.mapSize.set(Q.shadowSize || 1024, Q.shadowSize || 1024);
     Object.assign(sun.shadow.camera, {
       left: -13,
       right: 13,
@@ -470,7 +482,7 @@ const H = (x, z) => {
     chained = false,
     lowered = false;
   const watchFrame = (ms) => {
-    if (lowered || ++frames < 10) return;
+    if (hq || lowered || ++frames < 10) return;
     slow = ms > 25 ? slow + 1 : Math.max(0, slow - 1);
     if (slow < 8) return;
     lowered = true;
@@ -483,7 +495,7 @@ const H = (x, z) => {
   // draw fewer pixels while the camera moves; the frame it stops on is sharp again
   let moving = false;
   const setMoving = (m) => {
-    if (m === moving || lowered) return;
+    if (hq || m === moving || lowered) return;
     moving = m;
     r.setPixelRatio(m ? Math.max(0.8, Q.dpr * 0.7) : Q.dpr);
   };
