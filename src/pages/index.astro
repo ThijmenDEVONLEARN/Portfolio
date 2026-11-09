@@ -98,13 +98,6 @@ import '../styles/landing.css';
   </div>
 
   <script>
-    // load three.js only after the page has shown, so the first screen is not held up
-    const start = () => import('../scripts/mountain.js');
-    const later = () =>
-      'requestIdleCallback' in window
-        ? requestIdleCallback(start, { timeout: 1500 })
-        : setTimeout(start, 200);
-    if (document.readyState === 'complete') later();
-    else addEventListener('load', later, { once: true });
+    import '../scripts/mountain.js';
   </script>
 </Base>

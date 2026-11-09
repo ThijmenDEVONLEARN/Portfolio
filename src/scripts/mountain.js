@@ -579,6 +579,8 @@ const H = (x, z) => {
     req();
   });
   size();
+  // compile every shader now, so the first scroll does not stall on it
+  r.compile(sc, cam);
   onAccent();
   req();
   path.geometry.setDrawRange(0, 0);
