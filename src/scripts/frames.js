@@ -3,7 +3,8 @@
 import { reduce, root, setStep, showHint, prog, stepAt } from './climb.js';
 
 const COUNT = 120;
-const STOPS = [0, 0.09, 0.278, 0.466, 0.654, 1];
+// the scroll stops in index.astro, each on a whole frame: 0, 11, 33, 55, 78 and 119 of 119
+const STOPS = [0, 0.0924, 0.2773, 0.4622, 0.6555, 1];
 const cv = document.getElementById('seq');
 const cx = cv.getContext('2d');
 const stage = cv.parentElement;
@@ -62,9 +63,10 @@ const cover = (img, alpha) => {
 let k = 0,
   shown = -1,
   dirty = true;
-function draw() {
+// while gliding, blend the two nearest frames; at rest show one whole frame, so nothing doubles
+function draw(moving) {
   const list = sets[set];
-  const f = k * (COUNT - 1);
+  const f = moving ? k * (COUNT - 1) : Math.round(k * (COUNT - 1));
   if (!dirty && f === shown) return;
   const i0 = Math.floor(f),
     t = f - i0;
@@ -105,8 +107,8 @@ const tick = (now) => {
   last = now;
   setStep(stepAt(k));
   showHint(k);
-  draw();
   chained = k !== tk;
+  draw(chained);
   if (chained) req();
 };
 const req = () => {
