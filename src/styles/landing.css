@@ -7,18 +7,6 @@
   --bg: #0d1430;
   color-scheme: dark;
 }
-:root[data-a='ijs'] {
-  --acc: #8fd0ff;
-  --on-acc: #08121c;
-}
-:root[data-a='amber'] {
-  --acc: #f3b648;
-  --on-acc: #1a1206;
-}
-:root[data-a='rood'] {
-  --acc: #ff5a5f;
-  --on-acc: #1a0708;
-}
 * {
   box-sizing: border-box;
 }
@@ -78,7 +66,8 @@ body {
   height: 100%;
   object-fit: cover;
 }
-#gl {
+#gl,
+#seq {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -87,8 +76,17 @@ body {
   opacity: 0;
   transition: opacity 0.4s;
 }
-.gl-on #gl {
+.gl-on #gl,
+.gl-on #seq {
   opacity: 1;
+}
+/* the stills lean a little with the pointer (frames.js sets --px and --py) */
+.poster img,
+#seq {
+  transform: translate3d(calc(var(--px, 0) * -14px), calc(var(--py, 0) * -9px), 0) scale(1.04);
+  transition:
+    opacity 0.4s,
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .fallback {
   position: absolute;
@@ -285,39 +283,6 @@ body {
     monospace;
   color: var(--muted);
   transition: opacity 0.4s;
-}
-.picker {
-  position: absolute;
-  z-index: 6;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(56px + env(safe-area-inset-bottom, 0px));
-  display: flex;
-  gap: 4px;
-  padding: 5px;
-  border-radius: 999px;
-  background: rgba(10, 14, 30, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
-.picker button {
-  all: unset;
-  cursor: pointer;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-}
-.picker button i {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-}
-.picker button[aria-pressed='true'] {
-  box-shadow: inset 0 0 0 2px #fff;
-}
-.picker button:focus-visible {
-  outline: 2px solid #fff;
 }
 @media (prefers-reduced-motion: reduce) {
   * {

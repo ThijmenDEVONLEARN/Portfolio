@@ -26,21 +26,12 @@ import '../styles/landing.css';
       <i style="--k:1"></i>
     </div>
     <div class="stage">
-      <!-- still of the first frame, shown until the 3D scene is ready -->
+      <!-- still of the first frame, shown until the frames are in -->
       <picture class="poster" aria-hidden="true">
         <source media="(orientation: portrait)" srcset="/images/berg-port.webp" />
         <img src="/images/berg-land.webp" alt="" fetchpriority="high" />
       </picture>
-      <canvas id="gl" aria-hidden="true"></canvas>
-      <div class="fallback" aria-hidden="true">
-        <svg viewBox="0 0 800 400" preserveAspectRatio="xMidYMax slice">
-          <path
-            d="M0 400 L0 300 L180 250 L330 120 L420 60 L520 140 L640 110 L800 220 L800 400Z"
-            fill="#2b3a28"
-          />
-          <path d="M380 95 L420 60 L465 100 L440 96 L420 110 L400 96Z" fill="#eef2f5" />
-        </svg>
-      </div>
+      <canvas id="seq" aria-hidden="true"></canvas>
       <div class="shade"></div>
       <nav aria-label="Hoofdmenu">
         <a class="nm" href="/">
@@ -67,20 +58,6 @@ import '../styles/landing.css';
         </div>
       </div>
       <div class="steps" id="dots" aria-hidden="true"></div>
-      <div class="picker" role="group" aria-label="Accentkleur">
-        <button data-a="oranje" aria-label="Oranje">
-          <i style="background:#ff7a3d"></i>
-        </button>
-        <button data-a="ijs" aria-label="IJsblauw">
-          <i style="background:#8fd0ff"></i>
-        </button>
-        <button data-a="amber" aria-label="Amber">
-          <i style="background:#f3b648"></i>
-        </button>
-        <button data-a="rood" aria-label="Rood">
-          <i style="background:#ff5a5f"></i>
-        </button>
-      </div>
       <div class="hint" id="hint">
         scroll om te klimmen ↓
       </div>
@@ -98,6 +75,6 @@ import '../styles/landing.css';
   </div>
 
   <script>
-    import '../scripts/mountain.js';
+    import '../scripts/frames.js';
   </script>
 </Base>
