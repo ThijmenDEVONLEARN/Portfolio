@@ -111,7 +111,7 @@ nav .ln a.c {
   text-underline-offset: 5px;
 }
 @media (max-width: 640px) {
-  nav .ln a:not(.c) {
+  nav .ln a:not(.c):not(.w) {
     display: none;
   }
 }

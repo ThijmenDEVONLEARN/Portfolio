@@ -54,31 +54,7 @@
   gap: var(--space-sm);
 }
 
-/* chrome: a banner over the bar */
-.banner {
-  background: var(--color-ink);
-  color: var(--color-paper);
-  font-size: var(--text-sm);
-}
-.banner .container {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-md);
-  min-height: 40px;
-  align-items: center;
-}
-.banner a {
-  color: var(--color-paper);
-  text-decoration: underline;
-  text-decoration-color: var(--color-accent);
-  text-underline-offset: 0.3em;
-}
-.banner a:hover {
-  text-decoration-thickness: 2px;
-}
-.banner span {
-  color: color-mix(in oklab, var(--color-paper) 70%, var(--color-ink));
-}
+/* chrome: the sticky bar */
 .bar {
   position: sticky;
   top: 0;
@@ -252,7 +228,7 @@
 /* the survey map (Over mij hero) */
 .hero {
   position: relative;
-  min-height: calc(100dvh - var(--bar-h) - 40px);
+  min-height: calc(100dvh - var(--bar-h));
   display: grid;
   align-items: end;
   isolation: isolate;
@@ -1091,9 +1067,6 @@ footer .legal {
   .work dl > div {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2xs);
-  }
-  .banner span {
-    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

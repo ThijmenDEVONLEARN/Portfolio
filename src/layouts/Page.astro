@@ -29,12 +29,6 @@ const current = (href: string) => (href === path ? 'page' : undefined);
     </script>
   </Fragment>
 
-  <div class="banner">
-    <div class="container">
-      <a href="/werk/">Open voor werk: bekijk wat ik zoek</a>
-      <span>Software Developer in opleiding</span>
-    </div>
-  </div>
   <header class="bar">
     <div class="container">
       <a class="mark" href="/">
@@ -63,6 +57,9 @@ const current = (href: string) => (href === path ? 'page' : undefined);
         </a>
         <a href="/diensten/" aria-current={current('/diensten/')}>
           Diensten
+        </a>
+        <a href="/werk/" aria-current={current('/werk/')}>
+          Open voor werk
         </a>
         <a class="btn btn--primary" href="/contact/" aria-current={current('/contact/')}>
           Contact
