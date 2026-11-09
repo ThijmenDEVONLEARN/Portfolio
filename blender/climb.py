@@ -36,26 +36,44 @@ def smooth(a, b, x):
 
 
 def base(x, y):
-    """Uneroded height for arrays of x, y: one tall peak with shoulders in rolling grassland."""
-    r = np.hypot(x - PEAK.x, y - PEAK.y)
-    peak = 6.4 * np.exp(-((r / 4.2) ** 1.3))
-    shoulders = 1.8 * np.exp(-(((x - 3.6) ** 2 + (y + 0.4) ** 2) / 5)) + 1.5 * np.exp(
-        -(((x + 4.0) ** 2 + (y - 1.6) ** 2) / 6)
+    """Uneroded height for arrays of x, y: one pointed peak with rock ridges, in smooth meadow."""
+    dx, dy = x - PEAK.x, y - PEAK.y
+    r = np.hypot(dx, dy)
+    th = np.arctan2(dy, dx)
+    peak = 7.2 * np.exp(-((r / 3.6) ** 1.05))  # nearly exponential: a sharp summit, wide skirt
+    shoulders = 1.2 * np.exp(-(((x - 3.4) ** 2 + (y + 0.4) ** 2) / 4)) + 1.0 * np.exp(
+        -(((x + 3.8) ** 2 + (y - 1.6) ** 2) / 5)
     )
+    mountain = peak + shoulders
     pts = np.stack([x.ravel(), y.ravel()], -1)
+    pol = np.stack([np.cos(th).ravel() * 2.4, np.sin(th).ravel() * 2.4, r.ravel() * 0.12], -1)
 
-    def field(fn):
-        return np.array([fn(px, py) for px, py in pts]).reshape(x.shape)
+    def field(fn, coords):
+        return np.array([fn(*c) for c in coords]).reshape(x.shape)
 
+    # ridges running down from the summit, the spine of the rocky flanks
+    ridge = field(
+        lambda a, b, c: noise.ridged_multi_fractal(Vector((a, b, c)), 0.85, 2.0, 6, 1.0, 2.0, noise_basis='PERLIN_NEW'),
+        pol,
+    )
+    ridge = (ridge - ridge.mean()) / ridge.std()
     rough = field(
         lambda px, py: noise.ridged_multi_fractal(
-            Vector((px * 0.35, py * 0.35, 3.0)), 0.9, 2.1, 7, 1.0, 2.0, noise_basis='PERLIN_NEW'
-        )
+            Vector((px * 0.45, py * 0.45, 3.0)), 0.9, 2.1, 7, 1.0, 2.0, noise_basis='PERLIN_NEW'
+        ),
+        pts,
     )
     rough = (rough - rough.mean()) / rough.std()
-    hills = field(lambda px, py: noise.fractal(Vector((px * 0.07, py * 0.07, 7.0)), 1.0, 2.0, 5))
-    mountain = peak + shoulders
-    return mountain + rough * 0.35 * smooth(0.5, 4.0, mountain) + hills * 1.6
+    hills = field(lambda px, py: noise.fractal(Vector((px * 0.06, py * 0.06, 7.0)), 1.0, 2.0, 4), pts)
+    flank = smooth(0.6, 3.0, mountain) * (1 - smooth(6.4, 7.2, mountain) * 0.5)
+    return mountain + ridge * 0.45 * flank + rough * 0.1 * smooth(2.5, 5.0, mountain) + hills * 0.5
+
+
+def base_meadow(x, y):
+    """The meadow without the mountain, to tell the two apart."""
+    return np.array(
+        [noise.fractal(Vector((px * 0.06, py * 0.06, 7.0)), 1.0, 2.0, 4) for px, py in zip(x.ravel(), y.ravel())]
+    ).reshape(x.shape) * 0.5
 
 
 def erode(h, drops=900_000, batch=150_000, life=40, seed=4):
@@ -150,7 +168,9 @@ def build_terrain():
     co = co.reshape(-1, 3)
     x, y = co[:, 0].reshape(RES, RES), co[:, 1].reshape(RES, RES)
     assert np.allclose(x[0], x[-1]) and np.allclose(y[:, 0], y[:, -1]), 'grid is not row-major in x'
-    h = erode(base(x, y))
+    raw = base(x, y)
+    # erode the mountain only; the meadow around it stays smooth
+    h = raw + (erode(raw) - raw) * smooth(0.3, 1.4, raw - base_meadow(x, y))
     TERRAIN['h'] = h
     co[:, 2] = h.ravel()
     me.vertices.foreach_set('co', co.ravel())
@@ -201,27 +221,15 @@ def ramp(nt, loc, stops):
 
 
 def terrain_material():
-    """Grass on gentle slopes, rock where it is steep or high, snow on high flat ground."""
+    """Meadow low down; brown rock taking over with height and steepness, grass holding on in
+    the gullies; a dusting of snow on the very top."""
     m = bpy.data.materials.new('Terrain')
     m.use_nodes = True
     nt = m.node_tree
     nt.nodes.clear()
     L = nt.links.new
-    out = node(nt, 'ShaderNodeOutputMaterial', (1400, 0))
-    # grass and rock barely reflect; a normal sheen turns the far plains white at grazing angles
-    bsdf = node(nt, 'ShaderNodeBsdfPrincipled', (1100, 0), Roughness=1.0, **{'Specular IOR Level': 0.12})
-    L(bsdf.outputs[0], out.inputs['Surface'])
 
-    geo = node(nt, 'ShaderNodeNewGeometry', (-1200, 0))
-    sep = node(nt, 'ShaderNodeSeparateXYZ', (-1000, 200))
-    L(geo.outputs['Normal'], sep.inputs[0])
-    pos = node(nt, 'ShaderNodeSeparateXYZ', (-1000, -100))
-    L(geo.outputs['Position'], pos.inputs[0])
-    # broken-up masks: noise shifts the rock line and snow line
-    brk = node(nt, 'ShaderNodeTexNoise', (-1000, -400), Scale=1.6, Detail=8.0, Roughness=0.6)
-    L(geo.outputs['Position'], brk.inputs['Vector'])
-
-    def math_(op, a, b, loc):
+    def math_(op, a, b, loc=(0, 0)):
         n = node(nt, 'ShaderNodeMath', loc, operation=op)
         for i, v in enumerate((a, b)):
             if isinstance(v, (int, float)):
@@ -230,55 +238,72 @@ def terrain_material():
                 L(v, n.inputs[i])
         return n.outputs[0]
 
-    steep = math_('SUBTRACT', 1.0, sep.outputs['Z'], (-800, 200))  # 0 flat .. 1 vertical
-    jitter = math_('MULTIPLY', math_('SUBTRACT', brk.outputs['Fac'], 0.5, (-800, -400)), 0.5, (-600, -400))
-    rockmask_n = node(nt, 'ShaderNodeMapRange', (-400, 200), **{'From Min': 0.5, 'From Max': 0.66})
-    L(math_('ADD', steep, jitter, (-600, 200)), rockmask_n.inputs['Value'])
-    highrock = node(nt, 'ShaderNodeMapRange', (-400, 0), **{'From Min': 3.7, 'From Max': 4.5})
-    L(math_('ADD', pos.outputs['Z'], math_('MULTIPLY', jitter, 6.0, (-600, -150)), (-600, 0)), highrock.inputs['Value'])
-    rock = math_('MAXIMUM', rockmask_n.outputs[0], highrock.outputs[0], (-200, 100))
-    snowh = node(nt, 'ShaderNodeMapRange', (-400, -250), **{'From Min': 4.8, 'From Max': 5.3})
-    L(math_('ADD', pos.outputs['Z'], math_('MULTIPLY', jitter, 2.4, (-600, -300)), (-600, -250)), snowh.inputs['Value'])
-    flat = node(nt, 'ShaderNodeMapRange', (-400, -450), **{'From Min': 0.38, 'From Max': 0.22})
-    L(steep, flat.inputs['Value'])
-    snow = math_('MULTIPLY', snowh.outputs[0], flat.outputs[0], (-200, -300))
+    def span(v, lo, hi, loc=(0, 0)):
+        n = node(nt, 'ShaderNodeMapRange', loc, **{'From Min': lo, 'From Max': hi})
+        L(v, n.inputs['Value'])
+        return n.outputs[0]
 
-    # grass: two greens and dry patches
-    gn = node(nt, 'ShaderNodeTexNoise', (-400, 600), Scale=6.0, Detail=10.0)
-    L(geo.outputs['Position'], gn.inputs['Vector'])
-    grass = ramp(nt, (-200, 600), [(0.3, (0.05, 0.12, 0.025)), (0.55, (0.11, 0.2, 0.04)), (0.75, (0.2, 0.22, 0.08))])
-    L(gn.outputs['Fac'], grass.inputs[0])
-    # rock: dark stone with pale strata, like the reference
-    strata = node(nt, 'ShaderNodeTexWave', (-600, 900), wave_type='BANDS', bands_direction='Z', Scale=1.1,
-                  Distortion=14.0, Detail=8.0, **{'Detail Scale': 2.5})
-    L(geo.outputs['Position'], strata.inputs['Vector'])
-    rn = node(nt, 'ShaderNodeTexNoise', (-600, 1100), Scale=14.0, Detail=12.0, Roughness=0.7)
-    L(geo.outputs['Position'], rn.inputs['Vector'])
-    rockcol = ramp(nt, (-200, 950), [(0.2, (0.05, 0.045, 0.04)), (0.5, (0.16, 0.15, 0.13)), (0.8, (0.42, 0.4, 0.37))])
-    L(math_('MULTIPLY', strata.outputs['Fac'], rn.outputs['Fac'], (-400, 950)), rockcol.inputs[0])
+    def tex(scale, detail=8.0, rough=0.6, loc=(0, 0)):
+        n = node(nt, 'ShaderNodeTexNoise', loc, Scale=scale, Detail=detail, Roughness=rough)
+        L(geo.outputs['Position'], n.inputs['Vector'])
+        return n.outputs['Fac']
 
-    mix1 = node(nt, 'ShaderNodeMix', (200, 400), data_type='RGBA')
-    L(rock, live(mix1.inputs, 'Factor'))
-    L(grass.outputs['Color'], live(mix1.inputs, 'A'))
-    L(rockcol.outputs['Color'], live(mix1.inputs, 'B'))
-    mix2 = node(nt, 'ShaderNodeMix', (450, 300), data_type='RGBA')
-    L(snow, live(mix2.inputs, 'Factor'))
-    L(live(mix1.outputs, 'Result'), live(mix2.inputs, 'A'))
-    live(mix2.inputs, 'B').default_value = (0.85, 0.87, 0.9, 1.0)
-    # crevices darker: ambient occlusion
-    ao = node(nt, 'ShaderNodeAmbientOcclusion', (650, 300), Distance=0.6)
-    L(live(mix2.outputs, 'Result'), ao.inputs['Color'])
-    aomix = node(nt, 'ShaderNodeMix', (850, 300), data_type='RGBA', blend_type='MULTIPLY')
-    live(aomix.inputs, 'Factor').default_value = 0.7
-    L(live(mix2.outputs, 'Result'), live(aomix.inputs, 'A'))
-    L(ao.outputs['AO'], live(aomix.inputs, 'B'))
-    L(live(aomix.outputs, 'Result'), bsdf.inputs['Base Color'])
+    def mix(fac, a, b, loc=(0, 0)):
+        n = node(nt, 'ShaderNodeMix', loc, data_type='RGBA')
+        L(fac, live(n.inputs, 'Factor'))
+        for name, v in (('A', a), ('B', b)):
+            if isinstance(v, tuple):
+                live(n.inputs, name).default_value = (*v, 1.0)
+            else:
+                L(v, live(n.inputs, name))
+        return live(n.outputs, 'Result')
 
-    # surface detail without extra geometry
-    bn = node(nt, 'ShaderNodeTexNoise', (500, -300), Scale=60.0, Detail=12.0, Roughness=0.65)
-    L(geo.outputs['Position'], bn.inputs['Vector'])
-    bump = node(nt, 'ShaderNodeBump', (850, -300), Strength=0.35, Distance=0.02)
-    L(math_('ADD', bn.outputs['Fac'], math_('MULTIPLY', rock, rn.outputs['Fac'], (650, -500)), (650, -300)), bump.inputs['Height'])
+    out = node(nt, 'ShaderNodeOutputMaterial', (1600, 0))
+    bsdf = node(nt, 'ShaderNodeBsdfPrincipled', (1300, 0), Roughness=0.95, **{'Specular IOR Level': 0.15})
+    L(bsdf.outputs[0], out.inputs['Surface'])
+    geo = node(nt, 'ShaderNodeNewGeometry', (-1400, 0))
+    nz = node(nt, 'ShaderNodeSeparateXYZ', (-1200, 200))
+    L(geo.outputs['Normal'], nz.inputs[0])
+    pz = node(nt, 'ShaderNodeSeparateXYZ', (-1200, -100))
+    L(geo.outputs['Position'], pz.inputs[0])
+
+    steep = math_('SUBTRACT', 1.0, nz.outputs['Z'])  # 0 flat .. 1 vertical
+    jitter = math_('SUBTRACT', tex(0.9, 6.0, 0.55), 0.5)
+    # gullies are concave: grass and soil collect there
+    gully = span(geo.outputs['Pointiness'], 0.52, 0.47)
+    height = math_('ADD', pz.outputs['Z'], math_('MULTIPLY', jitter, 2.2))
+    alpine = span(height, 0.8, 3.2)  # 0 in the meadow, 1 high on the mountain
+    rockiness = math_('ADD', math_('MULTIPLY', steep, 1.3), math_('MULTIPLY', alpine, 0.55))
+    rockiness = math_('SUBTRACT', rockiness, math_('MULTIPLY', gully, 0.6))
+    rock = span(math_('ADD', rockiness, math_('MULTIPLY', jitter, 0.4)), 0.55, 0.75)
+    snow = math_('MULTIPLY', span(height, 6.3, 6.9), span(steep, 0.45, 0.3))
+
+    grass = ramp(nt, (0, 600), [(0.35, (0.055, 0.085, 0.022)), (0.55, (0.1, 0.14, 0.035)), (0.72, (0.17, 0.17, 0.06))])
+    L(tex(2.2, 6.0, 0.5), grass.inputs[0])
+    # higher grass is drier and browner
+    grasscol = mix(math_('MULTIPLY', alpine, 0.6), grass.outputs['Color'], (0.16, 0.13, 0.06))
+    grain = tex(9.0, 12.0, 0.7)
+    # warm grey-brown stone with paler patches
+    rockcol = ramp(nt, (0, 950), [(0.3, (0.07, 0.055, 0.045)), (0.55, (0.15, 0.12, 0.09)), (0.8, (0.24, 0.21, 0.17)), (0.95, (0.42, 0.4, 0.36))])
+    L(grain, rockcol.inputs[0])
+
+    col = mix(rock, grasscol, rockcol.outputs['Color'])
+    col = mix(snow, col, (0.8, 0.82, 0.85))
+    ao = node(nt, 'ShaderNodeAmbientOcclusion', (900, 300), Distance=0.8)
+    L(col, ao.inputs['Color'])
+    shaded = node(nt, 'ShaderNodeMix', (1100, 300), data_type='RGBA', blend_type='MULTIPLY')
+    live(shaded.inputs, 'Factor').default_value = 0.6
+    L(col, live(shaded.inputs, 'A'))
+    L(ao.outputs['AO'], live(shaded.inputs, 'B'))
+    L(live(shaded.outputs, 'Result'), bsdf.inputs['Base Color'])
+
+    # fine relief: craggy on rock, soft on grass
+    crag = node(nt, 'ShaderNodeTexNoise', (600, -500), noise_type='RIDGED_MULTIFRACTAL', Scale=5.0, Detail=10.0,
+                Roughness=0.6, Lacunarity=2.2)
+    L(geo.outputs['Position'], crag.inputs['Vector'])
+    relief = math_('ADD', math_('MULTIPLY', tex(40.0, 10.0, 0.6), 0.25), math_('MULTIPLY', rock, crag.outputs['Fac']))
+    bump = node(nt, 'ShaderNodeBump', (1100, -300), Strength=0.35, Distance=0.06)
+    L(relief, bump.inputs['Height'])
     L(bump.outputs['Normal'], bsdf.inputs['Normal'])
     return m
 
@@ -421,6 +446,21 @@ def build_camera_and_light(set_):
     nt.links.new(bg.outputs[0], pick.inputs[1])
     nt.links.new(seen.outputs[0], pick.inputs[2])
     nt.links.new(pick.outputs[0], out.inputs[0])
+    # thin haze in a box over the land (a world volume would also swallow the sun): far land
+    # fades into the sky, like a real valley
+    if 'Haze' not in bpy.data.objects:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 18))
+        box = bpy.context.active_object
+        box.name = 'Haze'
+        box.scale = (SIZE * 6, SIZE * 6, 40)
+        hm = bpy.data.materials.new('Haze')
+        hm.use_nodes = True
+        ht = hm.node_tree
+        ht.nodes.clear()
+        vol = node(ht, 'ShaderNodeVolumePrincipled', (0, 0), Density=0.0025, Anisotropy=0.4, Color=(0.75, 0.82, 0.95, 1))
+        hout = node(ht, 'ShaderNodeOutputMaterial', (250, 0))
+        ht.links.new(vol.outputs[0], hout.inputs['Volume'])
+        box.data.materials.append(hm)
 
     for f in range(COUNT):
         k = f / (COUNT - 1)
