@@ -16,6 +16,15 @@ import '../styles/landing.css';
     </script>
   </Fragment>
   <div class="track" id="track">
+    <!-- scroll stops: the climb progress where each stop on the path is in view -->
+    <div class="snaps" aria-hidden="true">
+      <i style="--k:0"></i>
+      <i style="--k:0.09"></i>
+      <i style="--k:0.278"></i>
+      <i style="--k:0.466"></i>
+      <i style="--k:0.654"></i>
+      <i style="--k:1"></i>
+    </div>
     <div class="stage">
       <!-- still of the first frame, shown until the 3D scene is ready -->
       <picture class="poster" aria-hidden="true">

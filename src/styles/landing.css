@@ -42,8 +42,27 @@ body {
     16px/1.55 'Geist',
     system-ui,
     sans-serif;
-  height: 340vh;
+  --run: 240vh;
+  height: calc(100vh + var(--run));
   position: relative;
+}
+/* every small scroll glides to the next stop on the path */
+:root {
+  scroll-snap-type: y mandatory;
+  /* the inner pages pad anchors for their sticky bar; the stops here sit flush */
+  scroll-padding-top: 0;
+}
+.snaps i {
+  position: absolute;
+  left: 0;
+  top: calc(var(--k) * var(--run));
+  width: 1px;
+  height: 1px;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.home-intro {
+  scroll-snap-align: start;
 }
 .stage {
   position: sticky;
