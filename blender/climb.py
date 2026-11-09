@@ -22,7 +22,7 @@ from mathutils import Vector, noise
 COUNT = 120
 PEAK = Vector((0.0, 1.0))
 SIZE = 64.0  # terrain width; the camera sees about the middle third
-RES = 900  # vertices per side
+RES = 1400  # vertices per side
 SETS = {'l': (2560, 1440, 46), 'p': (1080, 2340, 60)}  # width, height, vertical field of view
 ORANGE = (1.0, 0.478, 0.239)
 
@@ -39,8 +39,14 @@ def base(x, y):
     """Uneroded height for arrays of x, y: one pointed peak with rock ridges, in smooth meadow."""
     dx, dy = x - PEAK.x, y - PEAK.y
     r = np.hypot(dx, dy)
-    th = np.arctan2(dy, dx)
-    peak = 7.2 * np.exp(-((r / 3.6) ** 1.05))  # nearly exponential: a sharp summit, wide skirt
+    # bend the directions a little so the ridges wander instead of running dead straight
+    warp = np.array([noise.noise(Vector((px * 0.22, py * 0.22, 1.5))) for px, py in zip(x.ravel(), y.ravel())])
+    th = np.arctan2(dy, dx) + 0.45 * warp.reshape(x.shape)
+    # a horn: three sharp aretes with hollow faces between them, and a summit that is a point,
+    # not a single needle vertex
+    arete = np.abs(np.cos(1.5 * (th - 0.7))) ** 3
+    spread = 1 + (0.22 - 0.38 * arete) * smooth(0.0, 0.9, r)
+    peak = 7.4 * np.exp(-(np.sqrt(r * r + 0.06) * spread / 3.4))
     shoulders = 1.2 * np.exp(-(((x - 3.4) ** 2 + (y + 0.4) ** 2) / 4)) + 1.0 * np.exp(
         -(((x + 3.8) ** 2 + (y - 1.6) ** 2) / 5)
     )
@@ -65,8 +71,8 @@ def base(x, y):
     )
     rough = (rough - rough.mean()) / rough.std()
     hills = field(lambda px, py: noise.fractal(Vector((px * 0.06, py * 0.06, 7.0)), 1.0, 2.0, 4), pts)
-    flank = smooth(0.6, 3.0, mountain) * (1 - smooth(6.4, 7.2, mountain) * 0.5)
-    return mountain + ridge * 0.45 * flank + rough * 0.1 * smooth(2.5, 5.0, mountain) + hills * 0.5
+    flank = smooth(0.6, 3.0, mountain) * (1 - smooth(5.8, 7.2, mountain) * 0.6)
+    return mountain + ridge * 0.45 * flank + rough * 0.1 * smooth(2.5, 5.0, mountain) * (1 - smooth(5.6, 6.8, mountain)) + hills * 0.5
 
 
 def base_meadow(x, y):
@@ -76,7 +82,7 @@ def base_meadow(x, y):
     ).reshape(x.shape) * 0.5
 
 
-def erode(h, drops=900_000, batch=150_000, life=40, seed=4):
+def erode(h, drops=2_200_000, batch=200_000, life=60, seed=4):
     """Hydraulic erosion with water droplets (after Hans Theobald Beyer's method): each drop
     runs downhill, picks up sediment where it speeds up and drops it where it slows down.
     That cuts the branching gullies and fans you see on real mountain flanks."""
@@ -171,6 +177,11 @@ def build_terrain():
     raw = base(x, y)
     # erode the mountain only; the meadow around it stays smooth
     h = raw + (erode(raw) - raw) * smooth(0.3, 1.4, raw - base_meadow(x, y))
+    # round off the last few vertices of the summit so it ends in a clean point, not a stump
+    soft = h.copy()
+    for _ in range(4):
+        soft = sum(np.roll(np.roll(soft, i, 0), j, 1) for i in range(-2, 3) for j in range(-2, 3)) / 25
+    h += (soft - h) * (1 - smooth(0.25, 1.1, np.hypot(x - PEAK.x, y - PEAK.y)))
     TERRAIN['h'] = h
     co[:, 2] = h.ravel()
     me.vertices.foreach_set('co', co.ravel())
@@ -276,7 +287,7 @@ def terrain_material():
     rockiness = math_('ADD', math_('MULTIPLY', steep, 1.3), math_('MULTIPLY', alpine, 0.55))
     rockiness = math_('SUBTRACT', rockiness, math_('MULTIPLY', gully, 0.6))
     rock = span(math_('ADD', rockiness, math_('MULTIPLY', jitter, 0.4)), 0.55, 0.75)
-    snow = math_('MULTIPLY', span(height, 6.3, 6.9), span(steep, 0.45, 0.3))
+    snow = math_('MULTIPLY', span(height, 5.7, 6.5), span(steep, 0.6, 0.4))
 
     grass = ramp(nt, (0, 600), [(0.35, (0.055, 0.085, 0.022)), (0.55, (0.1, 0.14, 0.035)), (0.72, (0.17, 0.17, 0.06))])
     L(tex(2.2, 6.0, 0.5), grass.inputs[0])
@@ -313,13 +324,13 @@ def terrain_material():
 
 def path_points():
     """The spiral from the valley to the summit, same shape as the 3D scene in mountain.js."""
-    t = np.linspace(0, 1, 600)
+    t = np.linspace(0, 1, 2400)
     a = -2.55 + t * 3.4
     rad = 7.2 * (1 - t) ** 1.1 + 0.05
     # three.js x/z -> Blender x/-y; the peak sits at three z = -1, Blender y = 1
     x = PEAK.x + np.cos(a) * rad
     y = PEAK.y - np.sin(a) * rad
-    z = ground(x, y) + 0.07
+    z = ground(x, y) + 0.09
     return np.stack([x, y, z], -1)
 
 
