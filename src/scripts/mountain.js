@@ -514,6 +514,7 @@ const H = (x, z) => {
   let queued = false;
   const tick = () => {
     queued = false;
+    if (!inView) return;
     const tk = reduce ? 1 : prog();
     k += (tk - k) * 0.2;
     if (Math.abs(tk - k) < 0.0004) k = tk;
@@ -549,6 +550,12 @@ const H = (x, z) => {
     queued = true;
     requestAnimationFrame(tick);
   };
+  // the page below the mountain scrolls too: draw nothing while the canvas is off screen
+  let inView = true;
+  new IntersectionObserver(([e]) => {
+    inView = e.isIntersecting;
+    if (inView) req();
+  }).observe(cv);
   addEventListener('scroll', req, { passive: true });
   addEventListener('resize', () => {
     size();
