@@ -52,12 +52,24 @@ body {
   height: 100svh;
   overflow: hidden;
 }
+.poster img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 #gl {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.gl-on #gl {
+  opacity: 1;
 }
 .fallback {
   position: absolute;

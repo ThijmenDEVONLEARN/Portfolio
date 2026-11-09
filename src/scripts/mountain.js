@@ -524,6 +524,7 @@ const H = (x, z) => {
     if (chained) watchFrame(now - last);
     last = now;
     render();
+    root.classList.add('gl-on');
     chained = k !== tk;
     if (chained) req();
   };
