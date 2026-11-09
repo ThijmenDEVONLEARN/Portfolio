@@ -220,6 +220,11 @@ def build_terrain():
     h += (blur(h, cells(0.3)) - h) * (1 - smooth(1.2, 2.6, above))
     # and no pits on the lower slopes: nothing there may lie far below the ground around it
     h += np.maximum(blur(h, cells(0.25)) - 0.04 - h, 0) * (1 - smooth(2.2, 3.4, above))
+    # the drops leave lone cells standing as spikes along the ridges: let nothing stick out, or
+    # in, more than a hand's width from the ground right around it, then take the last edge off
+    around = blur(h, cells(0.12))
+    h = around + 0.12 * np.tanh((h - around) / 0.12)
+    h = blur(h, 1, 1)
     # round off the last few vertices of the summit so it ends in a clean point, not a stump
     h += (blur(h, cells(0.06)) - h) * (1 - smooth(0.1, 0.5, np.hypot(x - PEAK.x, y - PEAK.y)))
     # a trail: even out the ground under the path so the line is not lost between the crags
@@ -458,12 +463,13 @@ def detail_modifier(ob, rock):
     pos = new('GeometryNodeInputPosition').outputs[0]
     z = new('ShaderNodeSeparateXYZ')
     L(pos, z.inputs[0])
-    # beds of rock: each layer bulges out and is cut back under the next, like stacked ledges
-    layer = calc(ng, 'FRACT', calc(ng, 'ADD', calc(ng, 'MULTIPLY', z.outputs['Z'], 4.5), calc(ng, 'MULTIPLY', tex('FBM', 0.5, 2.0), 3.0)))
-    ledge = remap(ng, layer, 0.0, 0.35)
-    ledge.node.interpolation_type = 'SMOOTHSTEP'
-    crags = remap(ng, tex('RIDGED_MULTIFRACTAL', 2.0, 2.0), 0.3, 1.5, (-0.4, 1.0))
-    amount = calc(ng, 'MULTIPLY', attr('crag'), calc(ng, 'ADD', calc(ng, 'MULTIPLY', crags, 0.07), calc(ng, 'MULTIPLY', ledge, 0.06)))
+    # beds of rock: soft waves that follow the height, so the wall swells and dips in layers.
+    # Both are rounded and scaled to the mesh: anything sharper than a few cells turns to spikes
+    fine = min(1.0, RES / FULL)
+    ledge = calc(ng, 'SINE', calc(ng, 'ADD', calc(ng, 'MULTIPLY', z.outputs['Z'], 18.0), calc(ng, 'MULTIPLY', tex('FBM', 0.5, 2.0), 12.0)))
+    crags = remap(ng, tex('FBM', 1.6, 1.0), 0.3, 0.7, (-0.5, 0.5))
+    crags.node.interpolation_type = 'SMOOTHSTEP'
+    amount = calc(ng, 'MULTIPLY', attr('crag'), calc(ng, 'ADD', calc(ng, 'MULTIPLY', crags, 0.07 * fine), calc(ng, 'MULTIPLY', ledge, 0.025 * fine)))
     push = new('ShaderNodeVectorMath', operation='SCALE')
     L(new('GeometryNodeInputNormal').outputs[0], push.inputs[0])
     L(amount, push.inputs['Scale'])
@@ -559,8 +565,9 @@ def build_path(pts):
     me.data.polygons.foreach_set('use_smooth', [True] * len(me.data.polygons))
 
     marks = []
-    for i in range(1, 6):
-        k = 0.06 + (i - 1) * 0.188 if i < 5 else 0.999
+    # the fifth stop is the summit itself: no marker there, the climber arriving says enough
+    for i in range(1, 5):
+        k = 0.06 + (i - 1) * 0.188
         bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08, segments=24, ring_count=12, location=at_length(pts, k) + Vector((0, 0, 0.06)))
         mk = bpy.context.active_object
         mk.name = f'Stop {i}'
