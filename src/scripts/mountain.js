@@ -532,6 +532,7 @@ const H = (x, z) => {
     if (chained) watchFrame(now - last);
     last = now;
     chained = k !== tk;
+    setMoving(chained);
     render(!chained);
     root.classList.add('gl-on');
     if (chained) req();
@@ -553,6 +554,13 @@ const H = (x, z) => {
     sun.castShadow = false;
     sc.traverse((o) => o.material && (o.material.needsUpdate = true));
     size();
+  };
+  // draw fewer pixels while the camera moves; the frame it stops on is sharp again
+  let moving = false;
+  const setMoving = (m) => {
+    if (m === moving || lowered) return;
+    moving = m;
+    r.setPixelRatio(m ? Math.max(0.8, Q.dpr * 0.7) : Q.dpr);
   };
   const req = () => {
     if (queued) return;
