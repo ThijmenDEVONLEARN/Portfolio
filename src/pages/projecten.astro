@@ -11,7 +11,7 @@ const projects = [
     repo: 'https://github.com/ThijmenDEVONLEARN/Doelen-ideen-canvas',
     slot: 'canvas',
     alt: 'Het Doelen-canvas: doelen als kaarten op een oneindig canvas, gegroepeerd per thema',
-    img: '/images/canvas.jpg',
+    img: '/images/canvas.webp',
   },
   {
     title: 'Persoonlijk dashboard',
@@ -75,6 +75,7 @@ const projects = [
                 height="900"
                 alt={p.alt}
                 loading={i === 0 ? 'eager' : 'lazy'}
+                decoding="async"
               />
             )}
           </figure>
