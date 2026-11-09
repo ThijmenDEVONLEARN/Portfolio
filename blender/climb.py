@@ -250,13 +250,14 @@ def build_terrain():
         'wear': wear,
         # none on the summit: the snow there wants one clean face, not steps
         'crag': smooth(0.2, 0.45, steep) * smooth(1.0, 2.2, above) * (1 - near) * (1 - smooth(4.5, 5.3, h)),
+        'turf': (1 - smooth(0.2, 0.4, steep)) * (1 - smooth(1.2, 2.4, above)) * (1 - smooth(5, 22, np.hypot(x - PEAK.x, y - PEAK.y))) * (1 - near),
         'scree': (smooth(0.01, 0.06, wear) * smooth(0.6, 1.6, above) + 0.02 * smooth(0.2, 0.8, above)) * (1 - near) * (1 - smooth(4.0, 4.6, h)),
     }
     for name, a in masks.items():
         me.attributes.new(name, 'FLOAT', 'POINT').data.foreach_set('value', a.ravel())
     mat = terrain_material()
     ob.data.materials.append(mat)
-    detail_modifier(ob, build_rock())
+    detail_modifier(ob, build_rock(), build_tuft())
 
     # the land around it, out to the horizon: coarse and uneroded, just under the detailed part
     bpy.ops.mesh.primitive_grid_add(x_subdivisions=499, y_subdivisions=499, size=448)
@@ -318,6 +319,7 @@ def remap(nt, v, lo, hi, to=(0.0, 1.0)):
     return n.outputs[0]
 
 
+GRASS = [(0.3, (0.028, 0.062, 0.012)), (0.5, (0.05, 0.1, 0.018)), (0.7, (0.088, 0.128, 0.028))]
 ROCK = [(0.3, (0.06, 0.043, 0.032)), (0.5, (0.115, 0.083, 0.058)), (0.68, (0.165, 0.135, 0.105)), (0.9, (0.24, 0.215, 0.185))]
 
 
@@ -382,37 +384,66 @@ def terrain_material():
     scree = math_('MULTIPLY', span(wear, 0.02, 0.08), alpine)
     snow = math_('MULTIPLY', span(total((height, 1.0), (hollow, 2.0)), 4.9, 5.6), span(steep, 0.62, 0.42))
 
-    # broad patches of lighter and darker grass; nothing fine enough to shimmer in the distance
-    grass = ramp(nt, (0, 600), [(0.35, (0.05, 0.08, 0.022)), (0.55, (0.075, 0.11, 0.028)), (0.72, (0.105, 0.125, 0.04))])
+    def voronoi(scale):
+        n = node(nt, 'ShaderNodeTexVoronoi', (0, 0), feature='DISTANCE_TO_EDGE', Scale=scale)
+        L(geo.outputs['Position'], n.inputs['Vector'])
+        return n.outputs['Distance']
+
+    # grass: broad patches of lush and paler green, drier yellow spots, damp dark hollows, a fine
+    # speckle so it reads as turf, and low on the slopes a little heather
+    grass = ramp(nt, (0, 600), GRASS)
     L(tex(0.35, 5.0, 0.55), grass.inputs[0])
+    grasscol = mix(span(tex(2.5, 4.0, 0.5), 0.52, 0.8, (0.0, 0.55)), grass.outputs['Color'], (0.15, 0.14, 0.045))
+    grasscol = mix(span(hollow, 0.01, 0.08, (0.0, 0.6)), grasscol, (0.025, 0.05, 0.016))
+    heather = math_('MULTIPLY', span(tex(1.3, 4.0, 0.6), 0.6, 0.72), span(height, 0.5, 1.4, (0.0, 0.5)))
+    grasscol = mix(heather, grasscol, (0.1, 0.055, 0.07))
+    grasscol = mix(span(tex(34.0, 3.0, 0.5), 0.35, 0.7, (0.0, 0.3)), grasscol, (0.03, 0.05, 0.014))
     # higher grass is drier and browner
-    grasscol = mix(math_('MULTIPLY', alpine, 0.7), grass.outputs['Color'], (0.15, 0.105, 0.05))
-    # warm grey-brown stone in large patches, crossed by darker beds that lie almost level
+    grasscol = mix(math_('MULTIPLY', alpine, 0.7), grasscol, (0.15, 0.105, 0.05))
+
+    # stone: warm grey-brown in large patches with ochre stains, crossed by darker beds that lie
+    # almost level, cracked into blocks, dark where the water runs and pale on the exposed edges
     rockcol = ramp(nt, (0, 950), ROCK)
     L(tex(0.45, 5.0, 0.55), rockcol.inputs[0])
+    stone = mix(span(tex(1.4, 4.0, 0.55), 0.52, 0.75, (0.0, 0.5)), rockcol.outputs['Color'], (0.2, 0.115, 0.055))
     lay = node(nt, 'ShaderNodeMapping', (-600, 900))
     lay.inputs['Scale'].default_value = (0.5, 0.5, 7.0)
     L(geo.outputs['Position'], lay.inputs['Vector'])
     beds = node(nt, 'ShaderNodeTexNoise', (-400, 900), Scale=1.0, Detail=3.0, Roughness=0.5)
     L(lay.outputs[0], beds.inputs['Vector'])
-    stone = mix(span(beds.outputs[0], 0.45, 0.75, (0.0, 0.45)), rockcol.outputs['Color'], (0.04, 0.032, 0.026))
-    # exposed edges weather pale
-    stone = mix(span(hollow, 0.0, -0.12, (0.0, 0.18)), stone, (0.38, 0.33, 0.27))
+    stone = mix(span(beds.outputs[0], 0.45, 0.75, (0.0, 0.45)), stone, (0.04, 0.032, 0.026))
+    stone = mix(span(beds.outputs[0], 0.4, 0.2, (0.0, 0.25)), stone, (0.3, 0.26, 0.2))
+    # joints show here and there, not as a net over the whole wall
+    cracks = math_('MULTIPLY', span(voronoi(5.0), 0.0, 0.035, (1.0, 0.0)), span(tex(2.0, 3.0, 0.5), 0.45, 0.65))
+    stone = mix(math_('MULTIPLY', cracks, 0.3), stone, (0.03, 0.024, 0.02))
+    stone = mix(span(wear, -0.05, -0.4, (0.0, 0.45)), stone, (0.035, 0.028, 0.022))
+    stone = mix(span(hollow, 0.0, -0.12, (0.0, 0.25)), stone, (0.38, 0.33, 0.27))
+    # lichen and moss creep onto the lower rock
+    lichen = math_('MULTIPLY', span(tex(5.0, 4.0, 0.6), 0.5, 0.7), span(height, 3.6, 1.6, (0.0, 0.55)))
+    stone = mix(lichen, stone, (0.085, 0.095, 0.04))
 
     col = mix(rock, grasscol, stone)
+    # between grass and rock lies bare earth, not a clean line
+    edge = math_('MULTIPLY', span(rock, 0.0, 0.5), span(rock, 1.0, 0.5))
+    col = mix(math_('MULTIPLY', edge, 0.75), col, (0.085, 0.058, 0.034))
     col = mix(math_('MULTIPLY', scree, 0.8), col, (0.17, 0.135, 0.1))
     # hollows sit in shade
     col = mix(span(hollow, 0.0, 0.2, (0.0, 0.55)), col, (0.01, 0.01, 0.008))
     col = mix(snow, col, (0.8, 0.82, 0.85))
     L(col, bsdf.inputs['Base Color'])
-    L(span(snow, 0.0, 1.0, (0.92, 0.55)), bsdf.inputs['Roughness'])
+    L(mix(snow, mix(rock, (0.95,) * 3, span(tex(3.0, 3.0, 0.5), 0.3, 0.7, (0.75, 0.92))), (0.5,) * 3), bsdf.inputs['Roughness'])
+    # grass catches low light with a soft glow along its edges
+    L(span(total((rock, 1.0), (snow, 1.0)), 0.0, 1.0, (0.06, 0.0)), bsdf.inputs['Sheen Weight'])
+    bsdf.inputs['Sheen Tint'].default_value = (0.75, 0.9, 0.5, 1.0)
 
-    # fine relief: craggy on rock, soft on grass; kept coarse so the stone does not turn to grit
+    # fine relief: blocks and grain on the rock, soft tufts on the grass
     crag = node(nt, 'ShaderNodeTexNoise', (600, -500), noise_type='RIDGED_MULTIFRACTAL', Scale=3.5, Detail=4.0,
                 Roughness=0.55, Lacunarity=2.2)
     L(geo.outputs['Position'], crag.inputs['Vector'])
-    relief = total((tex(18.0, 5.0, 0.55), 0.06), (math_('MULTIPLY', rock, crag.outputs[0]), 0.8))
-    bump = node(nt, 'ShaderNodeBump', (1100, -300), Strength=0.3, Distance=0.05)
+    stony = total((crag.outputs[0], 0.8), (cracks, -0.3), (tex(28.0, 3.0, 0.5), 0.2))
+    turf = total((tex(9.0, 4.0, 0.55), 0.12), (tex(45.0, 2.0, 0.5), 0.05))
+    relief = math_('ADD', math_('MULTIPLY', rock, stony), math_('MULTIPLY', math_('SUBTRACT', 1.0, rock), turf))
+    bump = node(nt, 'ShaderNodeBump', (1100, -300), Strength=0.35, Distance=0.05)
     L(relief, bump.inputs['Height'])
     L(bump.outputs['Normal'], bsdf.inputs['Normal'])
     return m
@@ -441,7 +472,44 @@ def build_rock():
     return ob
 
 
-def detail_modifier(ob, rock):
+def build_tuft():
+    """A tuft of grass: a handful of blades leaning out from one root."""
+    verts, faces = [], []
+    for i in range(7):
+        a = i * 2.4  # golden angle, so the blades spread evenly
+        out, side = Vector((math.cos(a), math.sin(a), 0)), Vector((-math.sin(a), math.cos(a), 0))
+        lean = 0.25 + 0.3 * (i % 3) / 2
+        verts += [out * 0.1 - side * 0.14, out * 0.1 + side * 0.14, out * (0.1 + lean) + Vector((0, 0, 1.0 - 0.3 * lean))]
+        faces.append((3 * i, 3 * i + 1, 3 * i + 2))
+    me = bpy.data.meshes.new('Tuft')
+    me.from_pydata(verts, [], faces)
+    ob = bpy.data.objects.new('Tuft', me)
+    bpy.context.scene.collection.objects.link(ob)
+    ob.hide_render = ob.hide_viewport = True
+    m = bpy.data.materials.new('Tuft')
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = node(nt, 'ShaderNodeOutputMaterial', (600, 0))
+    bsdf = node(nt, 'ShaderNodeBsdfPrincipled', (300, 0), Roughness=0.8, **{'Specular IOR Level': 0.2})
+    # the same patches of colour as the ground it stands on, each tuft a little lighter or darker
+    patch = node(nt, 'ShaderNodeTexNoise', (-400, 0), Scale=0.35, Detail=5.0, Roughness=0.55)
+    nt.links.new(node(nt, 'ShaderNodeNewGeometry', (-600, 0)).outputs['Position'], patch.inputs['Vector'])
+    shade = ramp(nt, (0, 0), GRASS)
+    nt.links.new(calc(nt, 'ADD', patch.outputs[0], remap(nt, node(nt, 'ShaderNodeObjectInfo', (-400, -300)).outputs['Random'], 0.0, 1.0, (0.1, 0.4))), shade.inputs[0])
+    nt.links.new(shade.outputs['Color'], bsdf.inputs['Base Color'])
+    # blades let the light through: lit from behind they glow instead of going black
+    thin = node(nt, 'ShaderNodeBsdfTranslucent', (300, -300))
+    nt.links.new(shade.outputs['Color'], thin.inputs['Color'])
+    both = node(nt, 'ShaderNodeMixShader', (500, 0), Fac=0.5)
+    nt.links.new(bsdf.outputs[0], both.inputs[1])
+    nt.links.new(thin.outputs[0], both.inputs[2])
+    nt.links.new(both.outputs[0], out.inputs['Surface'])
+    me.materials.append(m)
+    return ob
+
+
+def detail_modifier(ob, rock, tuft):
     """Geometry Nodes on the terrain: push the steep faces out into crags and stepped beds of
     rock, and strew boulders over the scree. The masks come from build_terrain."""
     ng = bpy.data.node_groups.new('Terrain detail', 'GeometryNodeTree')
@@ -477,24 +545,32 @@ def detail_modifier(ob, rock):
     L(new('NodeGroupInput').outputs[0], move.inputs['Geometry'])
     L(push.outputs[0], move.inputs['Offset'])
 
-    spots = new('GeometryNodeDistributePointsOnFaces')
-    L(move.outputs[0], spots.inputs['Mesh'])
-    L(calc(ng, 'MULTIPLY', attr('scree'), 45.0), spots.inputs['Density'])
-    info = new('GeometryNodeObjectInfo')
-    info.inputs['Object'].default_value = rock
-    info.inputs['As Instance'].default_value = True
-    # mostly pebbles, now and then a real boulder
-    size = calc(ng, 'ADD', calc(ng, 'MULTIPLY', calc(ng, 'POWER', live(new('FunctionNodeRandomValue', data_type='FLOAT').outputs, 'Value'), 4.0), 0.07), 0.012)
-    turn = new('FunctionNodeRandomValue', data_type='FLOAT_VECTOR')
-    live(turn.inputs, 'Max').default_value = (6.3, 6.3, 6.3)
-    strew = new('GeometryNodeInstanceOnPoints')
-    L(spots.outputs['Points'], strew.inputs['Points'])
-    L(info.outputs['Geometry'], strew.inputs['Instance'])
-    L(live(turn.outputs, 'Value'), strew.inputs['Rotation'])
-    L(size, strew.inputs['Scale'])
     join = new('GeometryNodeJoinGeometry')
     L(move.outputs[0], join.inputs[0])
-    L(strew.outputs[0], join.inputs[0])
+
+    def strew(what, density, size, tilt):
+        spots = new('GeometryNodeDistributePointsOnFaces')
+        L(move.outputs[0], spots.inputs['Mesh'])
+        L(density, spots.inputs['Density'])
+        info = new('GeometryNodeObjectInfo')
+        info.inputs['Object'].default_value = what
+        info.inputs['As Instance'].default_value = True
+        turn = new('FunctionNodeRandomValue', data_type='FLOAT_VECTOR')
+        live(turn.inputs, 'Max').default_value = (tilt, tilt, 6.3)
+        put = new('GeometryNodeInstanceOnPoints')
+        L(spots.outputs['Points'], put.inputs['Points'])
+        L(info.outputs['Geometry'], put.inputs['Instance'])
+        L(live(turn.outputs, 'Value'), put.inputs['Rotation'])
+        L(size, put.inputs['Scale'])
+        L(put.outputs[0], join.inputs[0])
+
+    def chance():
+        return live(new('FunctionNodeRandomValue', data_type='FLOAT').outputs, 'Value')
+
+    # boulders: mostly pebbles, now and then a real one
+    strew(rock, calc(ng, 'MULTIPLY', attr('scree'), 45.0), calc(ng, 'ADD', calc(ng, 'MULTIPLY', calc(ng, 'POWER', chance(), 4.0), 0.07), 0.012), 6.3)
+    # tufts of grass on the gentle ground around the mountain, thinning out with distance
+    strew(tuft, calc(ng, 'MULTIPLY', attr('turf'), 320.0), calc(ng, 'ADD', calc(ng, 'MULTIPLY', chance(), 0.04), 0.035), 0.25)
     L(join.outputs[0], new('NodeGroupOutput').inputs[0])
     ob.modifiers.new('Detail', 'NODES').node_group = ng
 
@@ -676,6 +752,8 @@ def build_camera_and_light(set_):
         toward = Vector((math.cos(az) * math.cos(el), math.sin(az) * math.cos(el), math.sin(el)))
         sun.rotation_euler = (-toward).to_track_quat('-Z', 'Y').to_euler()
         sun.data.energy = 1.2 + k * 2.4
+        sun.data.color = (1.0, 0.8 + 0.15 * k, 0.6 + 0.3 * k)  # golden early on, whiter as it climbs
+        sun.data.keyframe_insert('color', frame=f)
         bg.inputs['Strength'].default_value = 0.3 - k * 0.2
         bg.inputs['Strength'].keyframe_insert('default_value', frame=f)
         sun.keyframe_insert('rotation_euler', frame=f)
@@ -693,6 +771,7 @@ def setup_render(samples, scale):
     sc.render.image_settings.quality = 80
     sc.frame_start, sc.frame_end = 0, COUNT - 1
     sc.view_settings.view_transform = 'AgX'
+    sc.view_settings.exposure = -0.35  # a touch darker keeps the greens rich
     for look in ('AgX - Medium High Contrast', 'Medium High Contrast'):
         try:
             sc.view_settings.look = look
