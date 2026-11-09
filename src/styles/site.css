@@ -107,10 +107,10 @@
   margin-left: var(--space-xs);
   min-height: 44px;
 }
-.sub {
+.menu-sub {
   display: contents;
 }
-.sub a {
+.menu-sub a {
   color: var(--color-muted);
 }
 .burger {
@@ -137,7 +137,7 @@
     min-height: 48px;
     font-size: var(--text-md);
   }
-  .sub a {
+  .menu-sub a {
     padding-left: var(--space-xl);
   }
   .menu .btn {
@@ -319,7 +319,8 @@
 .hero__text > * {
   pointer-events: auto;
 }
-.hero h1 {
+.hero .display {
+  font-size: var(--text-display);
   max-width: 12ch;
 }
 .hero__text .lead {
@@ -1086,4 +1087,12 @@ footer .legal {
 }
 .actions--after {
   margin-top: var(--space-2xl);
+}
+
+/* the About intro under the mountain on the home page */
+.home-intro {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  line-height: 1.55;
 }

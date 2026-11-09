@@ -50,7 +50,7 @@ The site runs at http://localhost:4321.
 
 ```
 src/
-  components/  Contour map hero
+  components/  Contour map hero, About intro, footer
   data/        Page order for the menu and next links
   layouts/     Base document and the inner page layout
   pages/       One file per route

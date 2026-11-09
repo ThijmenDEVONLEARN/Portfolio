@@ -1,5 +1,6 @@
 ---
 import Base from './Base.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 import { pages } from '../data/pages';
 import '../styles/tokens.css';
 import '../styles/base.css';
@@ -41,7 +42,7 @@ const current = (href: string) => (href === path ? 'page' : undefined);
         <a href="/over-mij/" aria-current={current('/over-mij/')}>
           Over mij
         </a>
-        <span class="sub">
+        <span class="menu-sub">
           <a href="/over-mij/skills/" aria-current={current('/over-mij/skills/')}>
             Skills
           </a>
@@ -78,19 +79,7 @@ const current = (href: string) => (href === path ? 'page' : undefined);
     </div>
   </nav>
 
-  <footer>
-    <div class="container">
-      <div>
-        <div class="wordmark">Thijmen</div>
-        <p>
-          Software Developer in opleiding bij ROC van Twente, stage bij Barnhoorn ICT. Ik bouw
-          websites en n8n-automatiseringen. Alle code staat open op{' '}
-          <a href="https://github.com/ThijmenDEVONLEARN">GitHub</a>.
-        </p>
-      </div>
-      <p class="legal">© 2026 Thijmen, code onder MIT</p>
-    </div>
-  </footer>
+  <SiteFooter />
 </Base>
 
 <script>

@@ -1,16 +1,20 @@
 ---
 import Base from '../layouts/Base.astro';
+import AboutIntro from '../components/AboutIntro.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 import '../styles/landing.css';
-const pages = [
-  ['Over mij', '/over-mij/'],
-  ['Projecten', '/projecten/'],
-  ['Diensten', '/diensten/'],
-  ['AI', '/ai/'],
-  ['Contact', '/contact/'],
-];
 ---
 
 <Base title="Thijmen | websites en automatiseringen">
+  <Fragment slot="head">
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Red+Hat+Display:wght@600&family=Red+Hat+Text:wght@400;500&family=Red+Hat+Mono:wght@400;500&display=swap"
+    />
+    <script is:inline>
+      document.documentElement.classList.add('js');
+    </script>
+  </Fragment>
   <div class="track" id="track">
     <div class="stage">
       <canvas id="gl" aria-hidden="true"></canvas>
@@ -47,36 +51,34 @@ const pages = [
         <div class="sub" id="sub"></div>
       </div>
       <div class="steps" id="dots" aria-hidden="true"></div>
+      <div class="picker" role="group" aria-label="Accentkleur">
+        <button data-a="oranje" aria-label="Oranje">
+          <i style="background:#ff7a3d"></i>
+        </button>
+        <button data-a="ijs" aria-label="IJsblauw">
+          <i style="background:#8fd0ff"></i>
+        </button>
+        <button data-a="amber" aria-label="Amber">
+          <i style="background:#f3b648"></i>
+        </button>
+        <button data-a="rood" aria-label="Rood">
+          <i style="background:#ff5a5f"></i>
+        </button>
+      </div>
       <div class="hint" id="hint">
         scroll om te klimmen ↓
       </div>
     </div>
   </div>
 
-  <section class="after">
-    <div class="in">
-      <h2>Kijk verder rond.</h2>
-      <div class="pages">
-        {pages.map(([label, href]) => (
-          <a href={href}>{label}</a>
-        ))}
+  <div class="home-intro">
+    <AboutIntro heading="h2" />
+    <nav class="next" aria-label="Volgende pagina">
+      <div class="container">
+        <a href="/over-mij/skills/">Verder naar Skills</a>
       </div>
-    </div>
-  </section>
-
-  <div class="picker" role="group" aria-label="Accentkleur">
-    <button data-a="oranje" aria-label="Oranje">
-      <i style="background:#ff7a3d"></i>
-    </button>
-    <button data-a="ijs" aria-label="IJsblauw">
-      <i style="background:#8fd0ff"></i>
-    </button>
-    <button data-a="amber" aria-label="Amber">
-      <i style="background:#f3b648"></i>
-    </button>
-    <button data-a="rood" aria-label="Rood">
-      <i style="background:#ff5a5f"></i>
-    </button>
+    </nav>
+    <SiteFooter />
   </div>
 
   <script>
