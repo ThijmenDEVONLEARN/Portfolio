@@ -1,4 +1,4 @@
-/* Design tokens: warm paper, ink and one tangerine signal (Furrow). Shared by every inner page. */
+/* Design tokens: ice-blue paper, slate ink and one coral signal (Glacier). Shared by every inner page. */
 :root {
   color-scheme: light;
   --space-3xs: 2px;
@@ -37,24 +37,24 @@
   --section-gap-l: 176px;
   --z-raised: 10;
   --z-sticky-nav: 300;
-  --color-paper: oklch(96% 0.011 85);
-  --color-paper-2: oklch(99.5% 0.005 85);
-  --color-paper-3: oklch(92% 0.016 85);
-  --color-ink: oklch(18% 0.006 60);
-  --color-ink-2: oklch(28% 0.008 60);
-  --color-muted: oklch(44% 0.012 60);
-  --color-rule: oklch(88% 0.013 85);
-  --color-accent: oklch(70% 0.19 40);
-  --color-accent-ink: oklch(18% 0.006 60);
-  --color-accent-soft: oklch(91% 0.05 50);
-  --color-focus: oklch(60% 0.19 40);
+  --color-paper: oklch(97% 0.012 230);
+  --color-paper-2: oklch(99.5% 0.005 230);
+  --color-paper-3: oklch(93% 0.018 230);
+  --color-ink: oklch(23% 0.035 250);
+  --color-ink-2: oklch(32% 0.035 250);
+  --color-muted: oklch(44% 0.03 245);
+  --color-rule: oklch(87% 0.02 235);
+  --color-accent: oklch(58% 0.17 25);
+  --color-accent-ink: oklch(99% 0.005 230);
+  --color-accent-soft: oklch(93% 0.035 20);
+  --color-focus: oklch(55% 0.17 25);
   --color-green: oklch(48% 0.11 150);
   --color-green-soft: oklch(92% 0.04 150);
-  --color-contour: oklch(62% 0.07 58);
-  --color-water: oklch(60% 0.05 232);
+  --color-contour: oklch(66% 0.06 230);
+  --color-water: oklch(55% 0.09 250);
   --color-hedge: oklch(50% 0.1 150);
-  --color-grid: oklch(90% 0.014 85);
-  --color-sheet: oklch(99.3% 0.004 85);
+  --color-grid: oklch(92% 0.015 230);
+  --color-sheet: oklch(99.3% 0.004 230);
   --font-display: 'Red Hat Display', 'Red Hat Text', ui-sans-serif, sans-serif;
   --font-body: 'Red Hat Text', ui-sans-serif, system-ui, sans-serif;
   --font-outlier: 'Red Hat Mono', ui-monospace, monospace;
@@ -62,10 +62,11 @@
   --radius-entry: 14px;
   --radius-pill: 6px;
   --rule-hair: 1px;
-  --shadow-card: 0 1px 2px oklch(18% 0.006 60 / 0.08), 0 14px 28px -16px oklch(18% 0.006 60 / 0.28);
+  --shadow-card:
+    0 1px 2px oklch(23% 0.035 250 / 0.08), 0 14px 28px -16px oklch(23% 0.035 250 / 0.28);
   --shadow-lift:
-    0 1px 1px oklch(18% 0.006 60 / 0.1), 0 2px 4px -1px oklch(18% 0.006 60 / 0.1),
-    0 24px 44px -20px oklch(18% 0.006 60 / 0.42);
+    0 1px 1px oklch(23% 0.035 250 / 0.1), 0 2px 4px -1px oklch(23% 0.035 250 / 0.1),
+    0 24px 44px -20px oklch(23% 0.035 250 / 0.42);
   --tracking-display: -0.035em;
   --display-weight: 600;
   --bar-h: 64px;
