@@ -2,9 +2,21 @@
 // Scroll picks the frame; the frames sit close enough together that each one is shown whole.
 import { reduce, root, setStep, showHint, prog, stepAt } from './climb.js';
 
-const COUNT = 239;
-// the scroll stops in index.astro, each on a whole frame: 0, 22, 66, 110, 156 and 238 of 238
+// the scroll stops in index.astro, as climb progress, and the frame each one rests on
 const STOPS = [0, 0.0924, 0.2773, 0.4622, 0.6555, 1];
+const AT = [0, 44, 88, 132, 178, 260];
+const COUNT = 261;
+// The first stretch is short, so it has a frame between every two (000h between 000 and 001):
+// frames 0 to 44 are 000, 000h, 001 ... 022, and from there frame i is file i - 22.
+const file = (i) =>
+  i < 44 ? String(i >> 1).padStart(3, '0') + (i & 1 ? 'h' : '') : String(i - 22).padStart(3, '0');
+// the frame at a climb progress: even steps between the two stops around it
+const frameAt = (k) => {
+  let j = 1;
+  while (j < STOPS.length - 1 && k > STOPS[j]) j++;
+  const u = (k - STOPS[j - 1]) / (STOPS[j] - STOPS[j - 1]);
+  return Math.round(AT[j - 1] + Math.max(0, Math.min(1, u)) * (AT[j] - AT[j - 1]));
+};
 const cv = document.getElementById('seq');
 const cx = cv.getContext('2d');
 const stage = cv.parentElement;
@@ -12,10 +24,12 @@ const portrait = matchMedia('(orientation: portrait)');
 const sets = { l: [], p: [] };
 let set = portrait.matches ? 'p' : 'l';
 
-// stops first, then ever finer passes, so scrubbing works before every frame is in
+// stops first, then the whole first stretch, then ever finer passes over the rest,
+// so the first scroll is smooth early and scrubbing works before every frame is in
 const order = [];
 const add = (i) => !order.includes(i) && order.push(i);
-STOPS.forEach((k) => add(Math.round(k * (COUNT - 1))));
+AT.forEach(add);
+for (let i = 0; i <= AT[1]; i++) add(i);
 for (let step = 16; step >= 1; step /= 2) for (let i = 0; i < COUNT; i += step) add(i);
 
 const loading = { l: false, p: false };
@@ -27,7 +41,7 @@ function load(s) {
     const i = queue.shift();
     if (i === undefined) return;
     const img = new Image();
-    img.src = `/berg/${s}/${String(i).padStart(3, '0')}.webp`;
+    img.src = `/berg/${s}/${file(i)}.webp`;
     img
       .decode()
       .then(() => {
@@ -118,10 +132,9 @@ function pump() {
 }
 function warm() {
   if (!window.createImageBitmap || chained) return;
-  const f = Math.round(k * (COUNT - 1));
-  const stops = STOPS.map((s) => Math.round(s * (COUNT - 1)));
-  const lo = Math.max(0, ...stops.filter((s) => s < f));
-  const hi = Math.min(COUNT - 1, ...stops.filter((s) => s > f));
+  const f = frameAt(k);
+  const lo = Math.max(0, ...AT.filter((s) => s < f));
+  const hi = Math.min(COUNT - 1, ...AT.filter((s) => s > f));
   bmp.forEach((b, i) => {
     if (i < lo || i > hi) {
       b.close();
@@ -152,7 +165,7 @@ const moving = (f) => {
 };
 // one whole frame at a time: blending two frames shows double edges, which reads as blur
 function draw() {
-  const f = Math.round(k * (COUNT - 1));
+  const f = frameAt(k);
   if (!dirty && f === shown) return;
   const img = (chained && moving(f)) || sets[set][f] || nearest(sets[set], f);
   if (!img) return;
@@ -248,7 +261,9 @@ addEventListener(
     if (next < 0 || next >= ys.length) return; // past the top or into the intro: let it scroll on
     held = now;
     e.preventDefault();
-    scrollTo({ top: ys[next], behavior: 'instant' });
+    // between the stops the frames do the gliding; to and from the intro the page itself glides
+    const intro = ys.length - 1;
+    scrollTo({ top: ys[next], behavior: next === intro || i === intro ? 'smooth' : 'instant' });
   },
   { passive: false },
 );
