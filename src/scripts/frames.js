@@ -1,7 +1,7 @@
 // The climb plays as short clips rendered in Blender: one per stretch between two stops, per direction
 // (scripts/build-clips.mjs). A scroll moves the page to the next stop and the clip glides there; video is
 // decoded by the graphics card, so it stays smooth. At rest a full still of the stop lies on top, sharp.
-import { reduce, root, setStep, showHint, prog, stepAt } from './climb.js';
+import { reduce, root, setStep, showHint, prog } from './climb.js';
 
 // the scroll stops in index.astro, as climb progress, and the still each one rests on
 const STOPS = [0, 0.0924, 0.2773, 0.4622, 0.6555, 1];
@@ -21,14 +21,23 @@ const wanted = () => {
   return i;
 };
 
-let at = wanted(), // the stop the picture is at, or left last
+let lock = 0,
+  at = wanted(), // the stop the picture is at, or left last
   playing = null,
   stills = [],
   clips = new Map();
 
+// the dots fill one by one as the climb passes them, instead of switching on at once
+const dots = [...document.querySelectorAll('#dots a')];
 const show = (k) => {
-  setStep(stepAt(k));
+  let near = 0;
+  STOPS.forEach((s, j) => Math.abs(s - k) < Math.abs(STOPS[near] - k) && (near = j));
+  setStep(near);
   showHint(k);
+  dots.forEach((d, j) => {
+    const f = (k - STOPS[j]) / (STOPS[j + 1] - STOPS[j]);
+    d.style.setProperty('--f', Math.max(0, Math.min(1, f)).toFixed(3));
+  });
 };
 
 // a clip is loaded and paused on its first frame, which is the still of the stop it leaves from
@@ -91,6 +100,7 @@ function go() {
     if (playing !== v) return;
     at = to;
     playing = null;
+    lock = performance.now() + 600; // a flick still coasting must not carry straight on
     if (wanted() === at) return rest();
     // straight on: keep this clip's last frame up until the next one runs
     stills.forEach((img) => img.classList.remove('on'));
@@ -144,8 +154,9 @@ addEventListener(
     const now = e.timeStamp;
     const ys = stopY.map((el) => el.getBoundingClientRect().top + scrollY);
     if (scrollY > ys[ys.length - 1] + 2) return; // in the intro: plain scrolling
-    // a flick keeps sending wheel events; a pause this long ends the gesture
-    if (now - held < 160) {
+    // a flick keeps sending wheel events; a pause this long ends the gesture, and a new one
+    // may only begin after the clip has landed, so the top (or any stop) takes a fresh scroll
+    if (now < lock || now - held < 160) {
       held = now;
       return e.preventDefault();
     }

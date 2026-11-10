@@ -249,9 +249,23 @@ body {
     background 0.3s,
     border-color 0.3s;
 }
-.steps a.on i {
+.steps i {
+  position: relative;
+}
+/* the fill grows with the climb: --f is 0 to 1 (frames.js); without it a dot is empty, or full once reached */
+.steps i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
   background: var(--acc);
+  transform: scale(var(--f, 0));
+}
+.steps a.on i {
   border-color: var(--acc);
+}
+.steps a.on i::after {
+  transform: scale(var(--f, 1));
 }
 .steps a.now i {
   transform: scale(1.6);

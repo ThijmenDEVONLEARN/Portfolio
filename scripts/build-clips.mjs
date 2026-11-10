@@ -49,11 +49,10 @@ for (const set of ['l', 'p']) {
         '-an',
       ];
       const name = path.join(out, `${a}-${b}`);
-      // sized for motion: the page shows the full still again once the clip has landed
+      // the frames' own size, so a glide is as sharp as the still it lands on
       execFileSync('ffmpeg', [
         ...input,
-        ...['-vf', set === 'l' ? 'scale=1920:1080' : 'scale=886:1920'],
-        ...['-c:v', 'libx264', '-preset', 'slow', '-crf', '23', '-pix_fmt', 'yuv420p'],
+        ...['-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-pix_fmt', 'yuv420p'],
         ...['-movflags', '+faststart', `${name}.mp4`],
       ]);
       console.log(set, `${a}-${b}`, n, 'frames');
