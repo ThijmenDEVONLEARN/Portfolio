@@ -5,6 +5,8 @@ import { reduce, root, setStep, showHint, prog, stepAt } from './climb.js';
 const COUNT = 239;
 // the scroll stops in index.astro, each on a whole frame: 0, 22, 66, 110, 156 and 238 of 238
 const STOPS = [0, 0.0924, 0.2773, 0.4622, 0.6555, 1];
+// climb progress per second at most
+const MAX_SPEED = 0.3;
 const cv = document.getElementById('seq');
 const cx = cv.getContext('2d');
 const stage = cv.parentElement;
@@ -91,7 +93,10 @@ const tick = (now) => {
   if (!inView) return;
   const tk = reduce ? 1 : prog();
   const dt = chained ? Math.min(100, now - last) : 1000 / 60;
-  k += (tk - k) * (1 - Math.pow(0.75, dt / (1000 / 60)));
+  const ease = (tk - k) * (1 - Math.pow(0.75, dt / (1000 / 60)));
+  // a speed limit, so even a hard flick climbs at an easy pace the frames can keep up with
+  const cap = (MAX_SPEED * dt) / 1000;
+  k += Math.max(-cap, Math.min(cap, ease));
   if (Math.abs(tk - k) < 0.0004) k = tk;
   last = now;
   setStep(stepAt(k));
@@ -111,6 +116,47 @@ new IntersectionObserver(([e]) => {
   if (inView) req();
 }).observe(cv);
 addEventListener('scroll', req, { passive: true });
+
+// one scroll per stop: each wheel gesture moves exactly one stop, and waits while the climb glides there
+// the stops on the path, then the intro below the climb
+const stopY = [...document.querySelectorAll('.snaps i'), document.querySelector('.home-intro')];
+let held = 0;
+const gliding = () => chained && !reduce;
+addEventListener(
+  'wheel',
+  (e) => {
+    if (reduce || e.ctrlKey || !e.deltaY) return;
+    const now = performance.now();
+    // a flick keeps sending wheel events; a pause this long ends the gesture
+    const sameGesture = now - held < 160;
+    const ys = stopY.map((el) => el.getBoundingClientRect().top + scrollY);
+    if (scrollY > ys[ys.length - 1] + 2) return; // in the intro: plain scrolling
+    if (gliding() || sameGesture) {
+      held = now;
+      return e.preventDefault();
+    }
+    let at = 0;
+    ys.forEach((y, i) => Math.abs(y - scrollY) < Math.abs(ys[at] - scrollY) && (at = i));
+    const to = at + Math.sign(e.deltaY);
+    if (to < 0 || to >= ys.length) return; // past the top or into the intro: let it scroll on
+    held = now;
+    e.preventDefault();
+    scrollTo({ top: ys[to], behavior: 'instant' });
+  },
+  { passive: false },
+);
+// a swipe already snaps one stop at a time; only hold the next one until the glide is done
+addEventListener(
+  'touchmove',
+  (e) => {
+    if (gliding() && e.cancelable) e.preventDefault();
+  },
+  { passive: false },
+);
+addEventListener('keydown', (e) => {
+  if (gliding() && ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Space'].includes(e.key))
+    e.preventDefault();
+});
 addEventListener('resize', () => {
   size();
   req();
