@@ -1,33 +1,40 @@
-// The climb plays as short clips rendered in Blender: one per stretch between two stops, per direction
-// (scripts/build-clips.mjs). A scroll moves the page to the next stop and the clip glides there; video is
-// decoded by the graphics card, so it stays smooth. At rest a full still of the stop lies on top, sharp.
+// The climb as two videos rendered in Blender, one forward and one backward (scripts/build-climb.mjs).
+// Scrolling is free: the page works out which frame the scroll position is at, and the video plays toward
+// it, fast when it is far behind and slowly as it arrives, so it follows the scroll without ever jumping.
+// Video is decoded by the graphics card, which keeps this smooth. At rest on a stop, a sharp still lies on top.
 import { reduce, root, setStep, showHint, prog } from './climb.js';
 
-// the scroll stops in index.astro, as climb progress, and the still each one rests on
+// the scroll stops (climb progress) and the frame each one rests on; 261 frames, 30 per second in the video
 const STOPS = [0, 0.0924, 0.2773, 0.4622, 0.6555, 1];
+const AT = [0, 44, 88, 132, 178, 260];
 const STILL = ['000', '022', '066', '110', '156', '238'];
-const LAST = STOPS.length - 1;
+const N = 261,
+  FPS = 30;
 const seq = document.getElementById('seq');
 const stage = seq.parentElement;
 const portrait = matchMedia('(orientation: portrait)');
+const track = document.getElementById('track');
+const intro = document.querySelector('.home-intro');
 let set = portrait.matches ? 'p' : 'l';
 
-// the stop the scroll position is nearest to
-const wanted = () => {
-  if (reduce) return LAST;
-  const k = prog();
-  let i = 0;
-  STOPS.forEach((s, j) => Math.abs(s - k) < Math.abs(STOPS[i] - k) && (i = j));
-  return i;
+// frame at a climb progress, and back; even steps between the stops
+const seg = (v, xs) => {
+  let j = 1;
+  while (j < xs.length - 1 && v > xs[j]) j++;
+  return j;
+};
+const frameOf = (k) => {
+  const j = seg(k, STOPS);
+  const u = (k - STOPS[j - 1]) / (STOPS[j] - STOPS[j - 1]);
+  return AT[j - 1] + Math.max(0, Math.min(1, u)) * (AT[j] - AT[j - 1]);
+};
+const progOf = (f) => {
+  const j = seg(f, AT);
+  const u = (f - AT[j - 1]) / (AT[j] - AT[j - 1]);
+  return STOPS[j - 1] + Math.max(0, Math.min(1, u)) * (STOPS[j] - STOPS[j - 1]);
 };
 
-let lock = 0,
-  at = wanted(), // the stop the picture is at, or left last
-  playing = null,
-  stills = [],
-  clips = new Map();
-
-// the dots fill one by one as the climb passes them, instead of switching on at once
+// the dots fill one by one as the climb passes them
 const dots = [...document.querySelectorAll('#dots a')];
 const show = (k) => {
   let near = 0;
@@ -40,141 +47,187 @@ const show = (k) => {
   });
 };
 
-// a clip is loaded and paused on its first frame, which is the still of the stop it leaves from
-function clip(a, b) {
-  const key = `${a}-${b}`;
-  if (b < 0 || b > LAST || clips.has(key)) return clips.get(key);
-  const v = document.createElement('video');
-  v.muted = true;
-  v.playsInline = true;
-  v.preload = 'auto';
-  v.disablePictureInPicture = true;
-  v.src = `/berg/${set}/clips/${key}.mp4`;
-  seq.append(v);
-  v.load();
-  clips.set(key, v);
-  return v;
-}
-const drop = (keep) =>
-  clips.forEach((v, key) => {
-    if (keep.includes(key)) return;
-    v.removeAttribute('src');
-    v.load();
-    v.remove();
-    clips.delete(key);
-  });
+let fwd, rev, stills, active, ready, switching, still;
+const GAIN = 5, // frames per second per frame of distance: it closes in over about a fifth of a second
+  TOP_SPEED = 150, // frames per second at most
+  JUMP = 90; // further than this behind or ahead (a dragged scrollbar, a reload): jump, then glide in
 
-// at rest: the sharp still on top, and the clips to both neighbours ready underneath
-function rest() {
-  playing = null;
-  show(STOPS[at]);
-  const here = at;
-  const swap = () => {
-    if (playing || at !== here) return;
-    stills.forEach((img, i) => img.classList.toggle('on', i === at));
+// where the video is, in frames
+const pos = () => {
+  const t = Math.max(0, Math.min(N - 1, active.currentTime * FPS));
+  return active === fwd ? t : N - 1 - t;
+};
+
+// show one video, put it at a frame, and say when it is there
+function put(v, frame, then) {
+  if (v === rev) loadRev();
+  const t = (v === fwd ? frame : N - 1 - frame) / FPS;
+  switching = true;
+  active.pause();
+  const done = () => {
+    v.removeEventListener('seeked', done);
+    fwd.classList.toggle('on', v === fwd);
+    rev.classList.toggle('on', v === rev);
+    active = v;
+    switching = false;
     root.classList.add('gl-on');
-    if (reduce) return;
-    // only now can the clip that just landed go: its last frame was the picture until the still was in
-    drop([`${at}-${at + 1}`, `${at}-${at - 1}`]);
-    clips.forEach((c) => c.classList.remove('on'));
+    then?.();
   };
-  stills[at].decode().then(swap, swap);
-  if (reduce) return;
-  clip(at, at + 1);
-  clip(at, at - 1);
+  v.addEventListener('seeked', done);
+  v.currentTime = t;
 }
 
-function go() {
-  if (playing || reduce) return;
-  const want = wanted();
-  if (want === at) return;
-  const dir = Math.sign(want - at);
-  // more than one stop away (a dragged scrollbar, a reload further down): cut, then glide the last stretch
-  if (Math.abs(want - at) > 1) at = want - dir;
-  const from = at,
-    to = at + dir;
-  const v = clip(from, to);
-  clip(to, to + dir); // in case the next scroll comes during this glide
-  playing = v;
-  const land = () => {
-    if (playing !== v) return;
-    at = to;
-    playing = null;
-    lock = performance.now() + 600; // a flick still coasting must not carry straight on
-    if (wanted() === at) return rest();
-    // straight on: keep this clip's last frame up until the next one runs
-    stills.forEach((img) => img.classList.remove('on'));
-    go();
-  };
-  v.onended = land;
-  v.onerror = land;
-  v.currentTime = 0;
-  v.play().then(() => {
-    if (playing !== v) return;
-    // the clip's first frame is the picture already showing, so the swap is not seen
-    clips.forEach((c) => c.classList.toggle('on', c === v));
-    stills.forEach((img) => img.classList.remove('on'));
-    const follow = () => {
-      if (playing !== v) return;
-      const u = Math.min(1, v.currentTime / (v.duration || 1));
-      show(STOPS[from] + u * u * (3 - 2 * u) * (STOPS[to] - STOPS[from]));
-      requestAnimationFrame(follow);
-    };
-    follow();
-  }, land); // playback refused (a power saver): step to the still instead
+const loadRev = () => {
+  const v = rev;
+  if (!v.src) v.src = `/berg/${set}/climb-rev.mp4`;
+};
+
+let raf = 0;
+const req = () => raf || (raf = requestAnimationFrame(tick));
+function tick() {
+  raf = 0;
+  if (reduce) return restStill(frameOf(prog()));
+  if (!ready || switching) return; // put() and the first load call req() when they are done
+  const target = frameOf(prog());
+  const p = pos();
+  const d = target - p;
+  const ad = Math.abs(d);
+  show(progOf(p));
+  if (ad > JUMP) {
+    const dir = Math.sign(d);
+    return put(dir > 0 ? fwd : rev, Math.max(0, Math.min(N - 1, target - dir * 30)), req);
+  }
+  if (ad < 0.7) {
+    active.pause();
+    restStill(p);
+    return;
+  }
+  // the other way: only past a small margin, so a hair of overshoot does not flip the video
+  const wantFwd = d > 0;
+  if ((active === fwd) !== wantFwd) {
+    if (ad < 1.5) return (active.pause(), restStill(p));
+    return put(wantFwd ? fwd : rev, p, req);
+  }
+  hideStill();
+  active.playbackRate = Math.max(8, Math.min(TOP_SPEED, ad * GAIN)) / FPS;
+  if (active.paused) active.play().catch(() => {});
+  req();
 }
 
-// the stills of this orientation; the first one in fades the scene over the poster
+// at rest on a stop the sharp still replaces the video frame, so what stands still is as sharp as it gets
+const hideStill = () => {
+  if (still < 0) return;
+  stills[still].classList.remove('on');
+  still = -1;
+};
+function restStill(f) {
+  let j = 0;
+  AT.forEach((a, i) => Math.abs(a - f) < Math.abs(AT[j] - f) && (j = i));
+  if (Math.abs(AT[j] - f) > 0.8 && !reduce) return hideStill();
+  if (still === j) return;
+  hideStill();
+  stills[j].classList.add('on');
+  still = j;
+  show(STOPS[j]);
+  root.classList.add('gl-on');
+}
+
 function build() {
-  playing = null;
-  at = wanted();
-  drop([]);
-  stills.forEach((img) => img.remove());
-  stills = STILL.map((name, i) => {
+  ready = false;
+  switching = false;
+  still = -1;
+  seq.replaceChildren();
+  const f0 = frameOf(prog());
+  stills = STILL.map((name) => {
     const img = new Image();
     img.alt = '';
     img.src = `/berg/${set}/${name}.webp`;
     seq.append(img);
     return img;
   });
-  rest();
+  [fwd, rev] = ['climb', 'climb-rev'].map((name) => {
+    const v = document.createElement('video');
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = 'auto';
+    v.disablePictureInPicture = true;
+    if (name === 'climb') v.src = `/berg/${set}/${name}.mp4`;
+    seq.append(v);
+    return v;
+  });
+  // the backward video is the same size again, so it waits until the forward one is in, or is asked for
+  fwd.addEventListener('canplaythrough', () => setTimeout(loadRev, 2000), { once: true });
+  active = fwd;
+  // the nearest still is up as soon as it is decoded; scrolling works once the forward video can seek
+  let near = 0;
+  AT.forEach((a, i) => Math.abs(a - f0) < Math.abs(AT[near] - f0) && (near = i));
+  stills[near].decode().then(
+    () => restStill(AT[near]),
+    () => {},
+  );
+  if (reduce) return;
+  fwd.addEventListener(
+    'loadeddata',
+    () => {
+      put(fwd, Math.round(f0), () => {
+        ready = true;
+        req();
+      });
+    },
+    { once: true },
+  );
 }
 
-addEventListener('scroll', go, { passive: true });
-
-// one scroll per stop: each wheel gesture moves exactly one stop
-// the stops on the path, then the intro below the climb
-const stopY = [...document.querySelectorAll('.snaps i'), document.querySelector('.home-intro')];
-let held = 0;
-addEventListener(
-  'wheel',
-  (e) => {
-    if (reduce || e.ctrlKey || !e.deltaY) return;
-    // the time of the input itself, so a busy page cannot split one flick into two
-    const now = e.timeStamp;
-    const ys = stopY.map((el) => el.getBoundingClientRect().top + scrollY);
-    if (scrollY > ys[ys.length - 1] + 2) return; // in the intro: plain scrolling
-    // a flick keeps sending wheel events; a pause this long ends the gesture, and a new one
-    // may only begin after the clip has landed, so the top (or any stop) takes a fresh scroll
-    if (now < lock || now - held < 160) {
-      held = now;
-      return e.preventDefault();
-    }
-    let i = 0;
-    ys.forEach((y, j) => Math.abs(y - scrollY) < Math.abs(ys[i] - scrollY) && (i = j));
-    const next = i + Math.sign(e.deltaY);
-    if (next < 0 || next >= ys.length) return; // past the top or into the intro: let it scroll on
-    held = now;
-    e.preventDefault();
-    // between the stops the clips do the gliding; to and from the intro the page itself glides
-    const intro = ys.length - 1;
-    scrollTo({ top: ys[next], behavior: next === intro || i === intro ? 'smooth' : 'instant' });
-  },
-  { passive: false },
-);
 portrait.addEventListener('change', () => {
   set = portrait.matches ? 'p' : 'l';
   build();
+});
+addEventListener('scroll', req, { passive: true });
+
+// The end of the climb is a wall: scrolling is free up to it, and one more scroll is asked to go on
+// into the page. Anything that carries past it (a coasting flick, a dragged scrollbar) stops there.
+const endY = () => track.offsetHeight - innerHeight;
+let unlocked = false,
+  reached = 0,
+  lastWheel = 0;
+const atEnd = () => scrollY >= endY() - 2;
+const fresh = (t) => t - reached > 500; // not the same push that brought us here
+addEventListener(
+  'scroll',
+  () => {
+    if (unlocked) return void (scrollY < endY() - 30 && (unlocked = false));
+    if (scrollY > endY()) scrollTo(0, endY());
+    if (atEnd() && !reached) reached = performance.now();
+    if (!atEnd()) reached = 0;
+  },
+  { passive: true },
+);
+addEventListener(
+  'wheel',
+  (e) => {
+    const gap = e.timeStamp - lastWheel;
+    lastWheel = e.timeStamp;
+    if (reduce || e.ctrlKey || e.deltaY <= 0 || unlocked) return;
+    if (atEnd()) {
+      e.preventDefault();
+      // a new push, after the last one has died down for a good moment, opens the way
+      if (gap > 350 && fresh(e.timeStamp)) {
+        unlocked = true;
+        scrollTo({ top: intro.offsetTop, behavior: 'smooth' });
+      }
+    } else if (e.deltaMode === 0 && e.deltaY > endY() - scrollY) {
+      e.preventDefault();
+      scrollTo(0, endY());
+    }
+  },
+  { passive: false },
+);
+addEventListener('touchstart', () => atEnd() && fresh(performance.now()) && (unlocked = true), {
+  passive: true,
+});
+addEventListener('keydown', (e) => {
+  if (atEnd() && fresh(performance.now()) && ['ArrowDown', 'PageDown', 'End', ' '].includes(e.key))
+    unlocked = true;
 });
 
 // a slight shift with the pointer or the tilt of the phone, so the still scene feels like a place

@@ -34,23 +34,9 @@ body {
   height: calc(100vh + var(--run));
   position: relative;
 }
-/* every small scroll glides to the next stop on the path */
+/* the inner pages pad anchors for their sticky bar; the home page sits flush */
 :root {
-  scroll-snap-type: y mandatory;
-  /* the inner pages pad anchors for their sticky bar; the stops here sit flush */
   scroll-padding-top: 0;
-}
-.snaps i {
-  position: absolute;
-  left: 0;
-  top: calc(var(--k) * var(--run));
-  width: 1px;
-  height: 1px;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-.home-intro {
-  scroll-snap-align: start;
 }
 .stage {
   position: sticky;
@@ -80,7 +66,7 @@ body {
 .gl-on #seq {
   opacity: 1;
 }
-/* the clips of the climb, and on top the still of the stop it rests at */
+/* the two climb videos (forward and backward) and, on top at rest, the sharp still of the stop */
 #seq > * {
   position: absolute;
   inset: 0;
@@ -88,11 +74,14 @@ body {
   height: 100%;
   object-fit: cover;
 }
+#seq video {
+  visibility: hidden;
+}
 #seq video.on {
-  z-index: 1;
+  visibility: visible;
 }
 #seq img {
-  z-index: 2;
+  z-index: 1;
   visibility: hidden;
 }
 #seq img.on {
