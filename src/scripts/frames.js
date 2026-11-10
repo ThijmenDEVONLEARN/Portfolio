@@ -5,8 +5,6 @@ import { reduce, root, setStep, showHint, prog, stepAt } from './climb.js';
 const COUNT = 239;
 // the scroll stops in index.astro, each on a whole frame: 0, 22, 66, 110, 156 and 238 of 238
 const STOPS = [0, 0.0924, 0.2773, 0.4622, 0.6555, 1];
-// climb progress per second at most
-const MAX_SPEED = 0.3;
 const cv = document.getElementById('seq');
 const cx = cv.getContext('2d');
 const stage = cv.parentElement;
@@ -37,6 +35,7 @@ function load(s) {
         if (s === set) {
           dirty = true;
           req();
+          warmSoon();
         }
       })
       .catch(() => {})
@@ -55,20 +54,107 @@ const nearest = (list, i) => {
 
 // draw like object-fit: cover, centred, so it lines up with the poster underneath
 const cover = (img) => {
-  const s = Math.max(cv.width / img.naturalWidth, cv.height / img.naturalHeight);
-  const w = img.naturalWidth * s,
-    h = img.naturalHeight * s;
+  // an image has natural sizes, a decoded bitmap plain ones
+  const iw = img.naturalWidth || img.width,
+    ih = img.naturalHeight || img.height;
+  const s = Math.max(cv.width / iw, cv.height / ih);
+  const w = iw * s,
+    h = ih * s;
   cx.drawImage(img, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
 };
 
 let k = 0,
   shown = -1,
   dirty = true;
+
+// Drawing an image decodes it again on every draw, far too slow for a glide. So while the climb rests,
+// the frames up to the stops on either side are decoded once into bitmaps, and a glide draws those.
+const bmp = new Map();
+const weak =
+  matchMedia('(max-width: 760px)').matches ||
+  (navigator.hardwareConcurrency || 8) <= 4 ||
+  (navigator.deviceMemory || 8) <= 4;
+// pixels per bitmap: up to 128 of them are held at once, so this caps the memory
+const BMP_PIXELS = weak ? 0.7e6 : 1.6e6;
+let gen = 0,
+  pending = [],
+  busy = 0,
+  warmTimer = 0;
+const dropBitmaps = () => {
+  gen++;
+  bmp.forEach((b) => b.close());
+  bmp.clear();
+  pending = [];
+};
+function pump() {
+  while (busy < 3 && pending.length) {
+    const i = pending.shift();
+    const img = sets[set][i];
+    if (!img || bmp.has(i)) continue;
+    const g = gen;
+    const s = Math.min(
+      1,
+      Math.max(cv.width / img.naturalWidth, cv.height / img.naturalHeight),
+      Math.sqrt(BMP_PIXELS / (img.naturalWidth * img.naturalHeight)),
+    );
+    busy++;
+    // from the cached file rather than the image, so the decoding happens off the main thread
+    fetch(img.src)
+      .then((r) => r.blob())
+      .then((blob) =>
+        createImageBitmap(blob, {
+          resizeWidth: Math.round(img.naturalWidth * s),
+          resizeHeight: Math.round(img.naturalHeight * s),
+          resizeQuality: 'medium',
+        }),
+      )
+      .then((b) => (g === gen && !bmp.has(i) ? bmp.set(i, b) : b.close()))
+      .catch(() => {})
+      .finally(() => {
+        busy--;
+        pump();
+      });
+  }
+}
+function warm() {
+  if (!window.createImageBitmap || chained) return;
+  const f = Math.round(k * (COUNT - 1));
+  const stops = STOPS.map((s) => Math.round(s * (COUNT - 1)));
+  const lo = Math.max(0, ...stops.filter((s) => s < f));
+  const hi = Math.min(COUNT - 1, ...stops.filter((s) => s > f));
+  bmp.forEach((b, i) => {
+    if (i < lo || i > hi) {
+      b.close();
+      bmp.delete(i);
+    }
+  });
+  // nearest first: a glide starts slowly, so those are needed soonest
+  pending = [];
+  for (let d = 1; f - d >= lo || f + d <= hi; d++) {
+    if (f + d <= hi) pending.push(f + d);
+    if (f - d >= lo) pending.push(f - d);
+  }
+  pump();
+}
+const warmSoon = () => {
+  warmTimer ||= setTimeout(() => {
+    warmTimer = 0;
+    warm();
+  }, 250);
+};
+// while gliding: the decoded frame, or a decoded neighbour, rather than a slow image
+const moving = (f) => {
+  for (let d = 0; d <= 3; d++) {
+    const b = bmp.get(f - d) || bmp.get(f + d);
+    if (b) return b;
+  }
+  return null;
+};
 // one whole frame at a time: blending two frames shows double edges, which reads as blur
 function draw() {
   const f = Math.round(k * (COUNT - 1));
   if (!dirty && f === shown) return;
-  const img = sets[set][f] || nearest(sets[set], f);
+  const img = (chained && moving(f)) || sets[set][f] || nearest(sets[set], f);
   if (!img) return;
   cover(img);
   shown = f;
@@ -81,27 +167,49 @@ const size = () => {
   cv.width = Math.round(stage.clientWidth * dpr);
   cv.height = Math.round(stage.clientHeight * dpr);
   dirty = true;
+  dropBitmaps();
+  warmSoon();
 };
 
-// ease toward the scroll position by elapsed time, so the glide keeps its speed when frames drop
+// each new scroll position starts a glide that eases in and out, carrying over the speed of a glide
+// already under way, so the climb never jerks to a stop; it runs on the clock, so dropped frames skip ahead
 let queued = false,
   chained = false,
-  last = 0,
   inView = true;
+let from = 0,
+  v0 = 0,
+  to = 0,
+  t0 = 0,
+  T = 1;
+// a cubic from (from, v0) to (to, 0): position and speed at u in 0..1
+const at = (u) => [
+  (2 * u ** 3 - 3 * u ** 2 + 1) * from +
+    (u ** 3 - 2 * u ** 2 + u) * v0 * T +
+    (3 * u ** 2 - 2 * u ** 3) * to,
+  ((6 * u ** 2 - 6 * u) * from + (3 * u ** 2 - 4 * u + 1) * v0 * T + (6 * u - 6 * u ** 2) * to) / T,
+];
 const tick = (now) => {
   queued = false;
   if (!inView) return;
   const tk = reduce ? 1 : prog();
-  const dt = chained ? Math.min(100, now - last) : 1000 / 60;
-  const ease = (tk - k) * (1 - Math.pow(0.75, dt / (1000 / 60)));
-  // a speed limit, so even a hard flick climbs at an easy pace the frames can keep up with
-  const cap = (MAX_SPEED * dt) / 1000;
-  k += Math.max(-cap, Math.min(cap, ease));
-  if (Math.abs(tk - k) < 0.0004) k = tk;
-  last = now;
+  if (Math.abs(tk - to) > 1e-4) {
+    const u = chained ? Math.min(1, (now - t0) / 1000 / T) : 1;
+    const v = chained ? at(u)[1] : 0;
+    [from, v0, to, t0] = [k, v, tk, now];
+    // seconds: a short hop still glides, the long last leg takes a little longer
+    T = 0.75 + 1.4 * Math.abs(tk - k);
+  }
+  const u = Math.min(1, (now - t0) / 1000 / T);
+  k = u < 1 ? Math.max(0, Math.min(1, at(u)[0])) : to;
   setStep(stepAt(k));
   showHint(k);
-  chained = k !== tk;
+  const was = chained;
+  chained = u < 1;
+  // at rest: the full image again, sharp, and the bitmaps for the next glide
+  if (was && !chained) {
+    dirty = true;
+    warmSoon();
+  }
   draw();
   if (chained) req();
 };
@@ -117,53 +225,42 @@ new IntersectionObserver(([e]) => {
 }).observe(cv);
 addEventListener('scroll', req, { passive: true });
 
-// one scroll per stop: each wheel gesture moves exactly one stop, and waits while the climb glides there
+// one scroll per stop: each wheel gesture moves exactly one stop
 // the stops on the path, then the intro below the climb
 const stopY = [...document.querySelectorAll('.snaps i'), document.querySelector('.home-intro')];
 let held = 0;
-const gliding = () => chained && !reduce;
 addEventListener(
   'wheel',
   (e) => {
     if (reduce || e.ctrlKey || !e.deltaY) return;
-    const now = performance.now();
-    // a flick keeps sending wheel events; a pause this long ends the gesture
-    const sameGesture = now - held < 160;
+    // the time of the input itself, so a busy page cannot split one flick into two
+    const now = e.timeStamp;
     const ys = stopY.map((el) => el.getBoundingClientRect().top + scrollY);
     if (scrollY > ys[ys.length - 1] + 2) return; // in the intro: plain scrolling
-    if (gliding() || sameGesture) {
+    // a flick keeps sending wheel events; a pause this long ends the gesture
+    if (now - held < 160) {
       held = now;
       return e.preventDefault();
     }
-    let at = 0;
-    ys.forEach((y, i) => Math.abs(y - scrollY) < Math.abs(ys[at] - scrollY) && (at = i));
-    const to = at + Math.sign(e.deltaY);
-    if (to < 0 || to >= ys.length) return; // past the top or into the intro: let it scroll on
+    let i = 0;
+    ys.forEach((y, j) => Math.abs(y - scrollY) < Math.abs(ys[i] - scrollY) && (i = j));
+    const next = i + Math.sign(e.deltaY);
+    if (next < 0 || next >= ys.length) return; // past the top or into the intro: let it scroll on
     held = now;
     e.preventDefault();
-    scrollTo({ top: ys[to], behavior: 'instant' });
+    scrollTo({ top: ys[next], behavior: 'instant' });
   },
   { passive: false },
 );
-// a swipe already snaps one stop at a time; only hold the next one until the glide is done
-addEventListener(
-  'touchmove',
-  (e) => {
-    if (gliding() && e.cancelable) e.preventDefault();
-  },
-  { passive: false },
-);
-addEventListener('keydown', (e) => {
-  if (gliding() && ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Space'].includes(e.key))
-    e.preventDefault();
-});
 addEventListener('resize', () => {
   size();
   req();
 });
 portrait.addEventListener('change', () => {
   set = portrait.matches ? 'p' : 'l';
+  dropBitmaps();
   load(set);
+  warmSoon();
   dirty = true;
   req();
 });
