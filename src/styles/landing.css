@@ -80,6 +80,24 @@ body {
 .gl-on #seq {
   opacity: 1;
 }
+/* the clips of the climb, and on top the still of the stop it rests at */
+#seq > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#seq video.on {
+  z-index: 1;
+}
+#seq img {
+  z-index: 2;
+  visibility: hidden;
+}
+#seq img.on {
+  visibility: visible;
+}
 /* the stills lean a little with the pointer (frames.js sets --px and --py) */
 .poster img,
 #seq {

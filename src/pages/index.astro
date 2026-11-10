@@ -16,7 +16,7 @@ import '../styles/landing.css';
     </script>
   </Fragment>
   <div class="track" id="track">
-    <!-- scroll stops: the climb progress where each stop on the path is in view, on whole frames (see frames.js) -->
+    <!-- scroll stops: the climb progress where each stop on the path is in view, see frames.js -->
     <div class="snaps" aria-hidden="true">
       <i style="--k:0"></i>
       <i style="--k:0.0924"></i>
@@ -26,12 +26,12 @@ import '../styles/landing.css';
       <i style="--k:1"></i>
     </div>
     <div class="stage">
-      <!-- still of the first frame, shown until the frames are in -->
+      <!-- still of the first frame, shown until the scene is in -->
       <picture class="poster" aria-hidden="true">
         <source media="(orientation: portrait)" srcset="/images/berg-port.webp" />
         <img src="/images/berg-land.webp" alt="" fetchpriority="high" />
       </picture>
-      <canvas id="seq" aria-hidden="true"></canvas>
+      <div id="seq" aria-hidden="true"></div>
       <div class="shade"></div>
       <nav aria-label="Hoofdmenu">
         <a class="nm" href="/">

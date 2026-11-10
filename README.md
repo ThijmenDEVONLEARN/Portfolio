@@ -2,7 +2,7 @@
 
 Personal portfolio website, built with [Astro](https://astro.build) and [three.js](https://threejs.org).
 
-The landing page is a climb up a 3D mountain. The scene is built and rendered in Blender (`blender/climb.py`) to 120 stills per orientation, doubled to 239 with frame interpolation, which the home page plays as you scroll. Every scroll glides to the next stop on the path. This keeps the climb smooth on any device, without running WebGL on the home page.
+The landing page is a climb up a 3D mountain. The scene is built and rendered in Blender (`blender/climb.py`) to 120 stills per orientation, doubled to 239 with frame interpolation, which the home page plays as you scroll. Every scroll plays a short video clip to the next stop on the path, with the sharp still of the stop on top at rest. This keeps the climb smooth on any device, without running WebGL on the home page.
 
 The inner pages share one light design: ice-blue paper, slate ink and a coral accent. The About page opens on a contour map of the climb so far, drawn on a canvas, with a stop for each step.
 
@@ -71,6 +71,14 @@ The site runs at http://localhost:4321.
    ```
    node scripts/first-stretch-frames.mjs <rife-ncnn-vulkan folder> <work folder>
    ```
+
+4. Cut the clips the home page plays between two stops (needs `ffmpeg` on the PATH). This writes `public/berg/<l|p>/clips/<from>-<to>.mp4` and takes a few minutes:
+
+   ```
+   node scripts/build-clips.mjs
+   ```
+
+   The stops and frame numbers in `scripts/build-clips.mjs` and `src/scripts/frames.js` must match.
 
 ## Project structure
 

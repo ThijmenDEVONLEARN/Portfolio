@@ -1,242 +1,136 @@
-// The climb as a sequence of stills rendered from the live 3D scene (/berg-3d/).
-// Scroll picks the frame; the frames sit close enough together that each one is shown whole.
+// The climb plays as short clips rendered in Blender: one per stretch between two stops, per direction
+// (scripts/build-clips.mjs). A scroll moves the page to the next stop and the clip glides there; video is
+// decoded by the graphics card, so it stays smooth. At rest a full still of the stop lies on top, sharp.
 import { reduce, root, setStep, showHint, prog, stepAt } from './climb.js';
 
-// the scroll stops in index.astro, as climb progress, and the frame each one rests on
+// the scroll stops in index.astro, as climb progress, and the still each one rests on
 const STOPS = [0, 0.0924, 0.2773, 0.4622, 0.6555, 1];
-const AT = [0, 44, 88, 132, 178, 260];
-const COUNT = 261;
-// The first stretch is short, so it has a frame between every two (000h between 000 and 001):
-// frames 0 to 44 are 000, 000h, 001 ... 022, and from there frame i is file i - 22.
-const file = (i) =>
-  i < 44 ? String(i >> 1).padStart(3, '0') + (i & 1 ? 'h' : '') : String(i - 22).padStart(3, '0');
-// the frame at a climb progress: even steps between the two stops around it
-const frameAt = (k) => {
-  let j = 1;
-  while (j < STOPS.length - 1 && k > STOPS[j]) j++;
-  const u = (k - STOPS[j - 1]) / (STOPS[j] - STOPS[j - 1]);
-  return Math.round(AT[j - 1] + Math.max(0, Math.min(1, u)) * (AT[j] - AT[j - 1]));
-};
-const cv = document.getElementById('seq');
-const cx = cv.getContext('2d');
-const stage = cv.parentElement;
+const STILL = ['000', '022', '066', '110', '156', '238'];
+const LAST = STOPS.length - 1;
+const seq = document.getElementById('seq');
+const stage = seq.parentElement;
 const portrait = matchMedia('(orientation: portrait)');
-const sets = { l: [], p: [] };
 let set = portrait.matches ? 'p' : 'l';
 
-// stops first, then the whole first stretch, then ever finer passes over the rest,
-// so the first scroll is smooth early and scrubbing works before every frame is in
-const order = [];
-const add = (i) => !order.includes(i) && order.push(i);
-AT.forEach(add);
-for (let i = 0; i <= AT[1]; i++) add(i);
-for (let step = 16; step >= 1; step /= 2) for (let i = 0; i < COUNT; i += step) add(i);
-
-const loading = { l: false, p: false };
-function load(s) {
-  if (loading[s]) return;
-  loading[s] = true;
-  const queue = [...order];
-  const next = () => {
-    const i = queue.shift();
-    if (i === undefined) return;
-    const img = new Image();
-    img.src = `/berg/${s}/${file(i)}.webp`;
-    img
-      .decode()
-      .then(() => {
-        sets[s][i] = img;
-        if (s === set) {
-          dirty = true;
-          req();
-          warmSoon();
-        }
-      })
-      .catch(() => {})
-      .finally(next);
-  };
-  for (let n = 0; n < 6; n++) next();
-}
-
-const nearest = (list, i) => {
-  for (let d = 0; d < COUNT; d++) {
-    if (list[i - d]) return list[i - d];
-    if (list[i + d]) return list[i + d];
-  }
-  return null;
+// the stop the scroll position is nearest to
+const wanted = () => {
+  if (reduce) return LAST;
+  const k = prog();
+  let i = 0;
+  STOPS.forEach((s, j) => Math.abs(s - k) < Math.abs(STOPS[i] - k) && (i = j));
+  return i;
 };
 
-// draw like object-fit: cover, centred, so it lines up with the poster underneath
-const cover = (img) => {
-  // an image has natural sizes, a decoded bitmap plain ones
-  const iw = img.naturalWidth || img.width,
-    ih = img.naturalHeight || img.height;
-  const s = Math.max(cv.width / iw, cv.height / ih);
-  const w = iw * s,
-    h = ih * s;
-  cx.drawImage(img, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
-};
+let at = wanted(), // the stop the picture is at, or left last
+  playing = null,
+  stills = [],
+  clips = new Map();
 
-let k = 0,
-  shown = -1,
-  dirty = true;
-
-// Drawing an image decodes it again on every draw, far too slow for a glide. So while the climb rests,
-// the frames up to the stops on either side are decoded once into bitmaps, and a glide draws those.
-const bmp = new Map();
-const weak =
-  matchMedia('(max-width: 760px)').matches ||
-  (navigator.hardwareConcurrency || 8) <= 4 ||
-  (navigator.deviceMemory || 8) <= 4;
-// pixels per bitmap: up to 128 of them are held at once, so this caps the memory
-const BMP_PIXELS = weak ? 0.7e6 : 1.6e6;
-let gen = 0,
-  pending = [],
-  busy = 0,
-  warmTimer = 0;
-const dropBitmaps = () => {
-  gen++;
-  bmp.forEach((b) => b.close());
-  bmp.clear();
-  pending = [];
-};
-function pump() {
-  while (busy < 3 && pending.length) {
-    const i = pending.shift();
-    const img = sets[set][i];
-    if (!img || bmp.has(i)) continue;
-    const g = gen;
-    const s = Math.min(
-      1,
-      Math.max(cv.width / img.naturalWidth, cv.height / img.naturalHeight),
-      Math.sqrt(BMP_PIXELS / (img.naturalWidth * img.naturalHeight)),
-    );
-    busy++;
-    // from the cached file rather than the image, so the decoding happens off the main thread
-    fetch(img.src)
-      .then((r) => r.blob())
-      .then((blob) =>
-        createImageBitmap(blob, {
-          resizeWidth: Math.round(img.naturalWidth * s),
-          resizeHeight: Math.round(img.naturalHeight * s),
-          resizeQuality: 'medium',
-        }),
-      )
-      .then((b) => (g === gen && !bmp.has(i) ? bmp.set(i, b) : b.close()))
-      .catch(() => {})
-      .finally(() => {
-        busy--;
-        pump();
-      });
-  }
-}
-function warm() {
-  if (!window.createImageBitmap || chained) return;
-  const f = frameAt(k);
-  const lo = Math.max(0, ...AT.filter((s) => s < f));
-  const hi = Math.min(COUNT - 1, ...AT.filter((s) => s > f));
-  bmp.forEach((b, i) => {
-    if (i < lo || i > hi) {
-      b.close();
-      bmp.delete(i);
-    }
-  });
-  // nearest first: a glide starts slowly, so those are needed soonest
-  pending = [];
-  for (let d = 1; f - d >= lo || f + d <= hi; d++) {
-    if (f + d <= hi) pending.push(f + d);
-    if (f - d >= lo) pending.push(f - d);
-  }
-  pump();
-}
-const warmSoon = () => {
-  warmTimer ||= setTimeout(() => {
-    warmTimer = 0;
-    warm();
-  }, 250);
-};
-// while gliding: the decoded frame, or a decoded neighbour, rather than a slow image
-const moving = (f) => {
-  for (let d = 0; d <= 3; d++) {
-    const b = bmp.get(f - d) || bmp.get(f + d);
-    if (b) return b;
-  }
-  return null;
-};
-// one whole frame at a time: blending two frames shows double edges, which reads as blur
-function draw() {
-  const f = frameAt(k);
-  if (!dirty && f === shown) return;
-  const img = (chained && moving(f)) || sets[set][f] || nearest(sets[set], f);
-  if (!img) return;
-  cover(img);
-  shown = f;
-  dirty = false;
-  root.classList.add('gl-on');
-}
-
-const size = () => {
-  const dpr = Math.min(devicePixelRatio || 1, 2);
-  cv.width = Math.round(stage.clientWidth * dpr);
-  cv.height = Math.round(stage.clientHeight * dpr);
-  dirty = true;
-  dropBitmaps();
-  warmSoon();
-};
-
-// each new scroll position starts a glide that eases in and out, carrying over the speed of a glide
-// already under way, so the climb never jerks to a stop; it runs on the clock, so dropped frames skip ahead
-let queued = false,
-  chained = false,
-  inView = true;
-let from = 0,
-  v0 = 0,
-  to = 0,
-  t0 = 0,
-  T = 1;
-// a cubic from (from, v0) to (to, 0): position and speed at u in 0..1
-const at = (u) => [
-  (2 * u ** 3 - 3 * u ** 2 + 1) * from +
-    (u ** 3 - 2 * u ** 2 + u) * v0 * T +
-    (3 * u ** 2 - 2 * u ** 3) * to,
-  ((6 * u ** 2 - 6 * u) * from + (3 * u ** 2 - 4 * u + 1) * v0 * T + (6 * u - 6 * u ** 2) * to) / T,
-];
-const tick = (now) => {
-  queued = false;
-  if (!inView) return;
-  const tk = reduce ? 1 : prog();
-  if (Math.abs(tk - to) > 1e-4) {
-    const u = chained ? Math.min(1, (now - t0) / 1000 / T) : 1;
-    const v = chained ? at(u)[1] : 0;
-    [from, v0, to, t0] = [k, v, tk, now];
-    // seconds: a short hop still glides, the long last leg takes a little longer
-    T = 0.75 + 1.4 * Math.abs(tk - k);
-  }
-  const u = Math.min(1, (now - t0) / 1000 / T);
-  k = u < 1 ? Math.max(0, Math.min(1, at(u)[0])) : to;
+const show = (k) => {
   setStep(stepAt(k));
   showHint(k);
-  const was = chained;
-  chained = u < 1;
-  // at rest: the full image again, sharp, and the bitmaps for the next glide
-  if (was && !chained) {
-    dirty = true;
-    warmSoon();
-  }
-  draw();
-  if (chained) req();
-};
-const req = () => {
-  if (queued) return;
-  queued = true;
-  requestAnimationFrame(tick);
 };
 
-new IntersectionObserver(([e]) => {
-  inView = e.isIntersecting;
-  if (inView) req();
-}).observe(cv);
-addEventListener('scroll', req, { passive: true });
+// a clip is loaded and paused on its first frame, which is the still of the stop it leaves from
+function clip(a, b) {
+  const key = `${a}-${b}`;
+  if (b < 0 || b > LAST || clips.has(key)) return clips.get(key);
+  const v = document.createElement('video');
+  v.muted = true;
+  v.playsInline = true;
+  v.preload = 'auto';
+  v.disablePictureInPicture = true;
+  v.src = `/berg/${set}/clips/${key}.mp4`;
+  seq.append(v);
+  v.load();
+  clips.set(key, v);
+  return v;
+}
+const drop = (keep) =>
+  clips.forEach((v, key) => {
+    if (keep.includes(key)) return;
+    v.removeAttribute('src');
+    v.load();
+    v.remove();
+    clips.delete(key);
+  });
+
+// at rest: the sharp still on top, and the clips to both neighbours ready underneath
+function rest() {
+  playing = null;
+  show(STOPS[at]);
+  const here = at;
+  const swap = () => {
+    if (playing || at !== here) return;
+    stills.forEach((img, i) => img.classList.toggle('on', i === at));
+    root.classList.add('gl-on');
+    if (reduce) return;
+    // only now can the clip that just landed go: its last frame was the picture until the still was in
+    drop([`${at}-${at + 1}`, `${at}-${at - 1}`]);
+    clips.forEach((c) => c.classList.remove('on'));
+  };
+  stills[at].decode().then(swap, swap);
+  if (reduce) return;
+  clip(at, at + 1);
+  clip(at, at - 1);
+}
+
+function go() {
+  if (playing || reduce) return;
+  const want = wanted();
+  if (want === at) return;
+  const dir = Math.sign(want - at);
+  // more than one stop away (a dragged scrollbar, a reload further down): cut, then glide the last stretch
+  if (Math.abs(want - at) > 1) at = want - dir;
+  const from = at,
+    to = at + dir;
+  const v = clip(from, to);
+  clip(to, to + dir); // in case the next scroll comes during this glide
+  playing = v;
+  const land = () => {
+    if (playing !== v) return;
+    at = to;
+    playing = null;
+    if (wanted() === at) return rest();
+    // straight on: keep this clip's last frame up until the next one runs
+    stills.forEach((img) => img.classList.remove('on'));
+    go();
+  };
+  v.onended = land;
+  v.onerror = land;
+  v.currentTime = 0;
+  v.play().then(() => {
+    if (playing !== v) return;
+    // the clip's first frame is the picture already showing, so the swap is not seen
+    clips.forEach((c) => c.classList.toggle('on', c === v));
+    stills.forEach((img) => img.classList.remove('on'));
+    const follow = () => {
+      if (playing !== v) return;
+      const u = Math.min(1, v.currentTime / (v.duration || 1));
+      show(STOPS[from] + u * u * (3 - 2 * u) * (STOPS[to] - STOPS[from]));
+      requestAnimationFrame(follow);
+    };
+    follow();
+  }, land); // playback refused (a power saver): step to the still instead
+}
+
+// the stills of this orientation; the first one in fades the scene over the poster
+function build() {
+  playing = null;
+  at = wanted();
+  drop([]);
+  stills.forEach((img) => img.remove());
+  stills = STILL.map((name, i) => {
+    const img = new Image();
+    img.alt = '';
+    img.src = `/berg/${set}/${name}.webp`;
+    seq.append(img);
+    return img;
+  });
+  rest();
+}
+
+addEventListener('scroll', go, { passive: true });
 
 // one scroll per stop: each wheel gesture moves exactly one stop
 // the stops on the path, then the intro below the climb
@@ -261,23 +155,15 @@ addEventListener(
     if (next < 0 || next >= ys.length) return; // past the top or into the intro: let it scroll on
     held = now;
     e.preventDefault();
-    // between the stops the frames do the gliding; to and from the intro the page itself glides
+    // between the stops the clips do the gliding; to and from the intro the page itself glides
     const intro = ys.length - 1;
     scrollTo({ top: ys[next], behavior: next === intro || i === intro ? 'smooth' : 'instant' });
   },
   { passive: false },
 );
-addEventListener('resize', () => {
-  size();
-  req();
-});
 portrait.addEventListener('change', () => {
   set = portrait.matches ? 'p' : 'l';
-  dropBitmaps();
-  load(set);
-  warmSoon();
-  dirty = true;
-  req();
+  build();
 });
 
 // a slight shift with the pointer or the tilt of the phone, so the still scene feels like a place
@@ -306,6 +192,4 @@ if (!reduce) {
   });
 }
 
-size();
-load(set);
-req();
+build();
