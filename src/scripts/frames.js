@@ -49,8 +49,19 @@ const show = (k) => {
 
 let fwd, rev, stills, active, ready, switching, still;
 const GAIN = 2.5, // frames per second per frame of distance: it closes in over about 0.4 seconds, a soft glide
-  TOP_SPEED = 150, // frames per second at most
+  TOP_SPEED = 150, // frames per second at most, in the middle of the climb
   JUMP = 90; // further than this behind or ahead (a dragged scrollbar, a reload): jump, then glide in
+
+// The start and the end are slow however hard you scroll: the first stretch is where the video still has
+// to start up, and the last one is the busiest, so the speed limit is low there and rises in between.
+const speedLimit = (f) => {
+  const ramp = (a, b, x, y) => x + ((f - a) / (b - a)) * (y - x);
+  if (f <= AT[1]) return 24; // up to the first dot
+  if (f < 80) return ramp(AT[1], 80, 24, TOP_SPEED);
+  if (f <= 190) return TOP_SPEED;
+  if (f < 235) return ramp(190, 235, TOP_SPEED, 36);
+  return 36; // the last stretch up to the top
+};
 
 // where the video is, in frames
 const pos = () => {
@@ -93,9 +104,12 @@ function tick() {
   const d = target - p;
   const ad = Math.abs(d);
   show(progOf(p));
-  if (ad > JUMP) {
+  // far behind (a dragged scrollbar, a reload): jump toward it, but only through the fast middle;
+  // the slow start and end are always played, however far the scroll is ahead
+  if (ad > JUMP && p > 80 && p < 190) {
     const dir = Math.sign(d);
-    return put(dir > 0 ? fwd : rev, Math.max(0, Math.min(N - 1, target - dir * 30)), req);
+    const to = Math.max(80, Math.min(190, target - dir * 30));
+    if (Math.abs(to - p) > 30) return put(dir > 0 ? fwd : rev, to, req);
   }
   if (ad < 0.5) {
     active.pause();
@@ -109,7 +123,7 @@ function tick() {
     return put(wantFwd ? fwd : rev, p, req);
   }
   hideStill();
-  active.playbackRate = Math.max(3, Math.min(TOP_SPEED, ad * GAIN)) / FPS;
+  active.playbackRate = Math.max(3, Math.min(speedLimit(p), ad * GAIN)) / FPS;
   if (active.paused) active.play().catch(() => {});
   req();
 }
