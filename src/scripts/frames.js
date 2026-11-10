@@ -1,9 +1,9 @@
 // The climb as a sequence of stills rendered from the live 3D scene (/berg-3d/).
-// Scroll picks the frame; neighbouring frames are blended so the camera glides between them.
+// Scroll picks the frame; the frames sit close enough together that each one is shown whole.
 import { reduce, root, setStep, showHint, prog, stepAt } from './climb.js';
 
-const COUNT = 120;
-// the scroll stops in index.astro, each on a whole frame: 0, 11, 33, 55, 78 and 119 of 119
+const COUNT = 239;
+// the scroll stops in index.astro, each on a whole frame: 0, 22, 66, 110, 156 and 238 of 238
 const STOPS = [0, 0.0924, 0.2773, 0.4622, 0.6555, 1];
 const cv = document.getElementById('seq');
 const cx = cv.getContext('2d');
@@ -52,34 +52,23 @@ const nearest = (list, i) => {
 };
 
 // draw like object-fit: cover, centred, so it lines up with the poster underneath
-const cover = (img, alpha) => {
+const cover = (img) => {
   const s = Math.max(cv.width / img.naturalWidth, cv.height / img.naturalHeight);
   const w = img.naturalWidth * s,
     h = img.naturalHeight * s;
-  cx.globalAlpha = alpha;
   cx.drawImage(img, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
 };
 
 let k = 0,
   shown = -1,
   dirty = true;
-// while gliding, blend the two nearest frames; at rest show one whole frame, so nothing doubles
-function draw(moving) {
-  const list = sets[set];
-  const f = moving ? k * (COUNT - 1) : Math.round(k * (COUNT - 1));
+// one whole frame at a time: blending two frames shows double edges, which reads as blur
+function draw() {
+  const f = Math.round(k * (COUNT - 1));
   if (!dirty && f === shown) return;
-  const i0 = Math.floor(f),
-    t = f - i0;
-  const a = list[i0],
-    b = list[Math.min(COUNT - 1, i0 + 1)];
-  if (a) {
-    cover(a, 1);
-    if (b && t > 0.01) cover(b, t);
-  } else {
-    const n = nearest(list, Math.round(f));
-    if (!n) return;
-    cover(n, 1);
-  }
+  const img = sets[set][f] || nearest(sets[set], f);
+  if (!img) return;
+  cover(img);
   shown = f;
   dirty = false;
   root.classList.add('gl-on');
@@ -108,7 +97,7 @@ const tick = (now) => {
   setStep(stepAt(k));
   showHint(k);
   chained = k !== tk;
-  draw(chained);
+  draw();
   if (chained) req();
 };
 const req = () => {

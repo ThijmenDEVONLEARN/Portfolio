@@ -2,7 +2,7 @@
 
 Personal portfolio website, built with [Astro](https://astro.build) and [three.js](https://threejs.org).
 
-The landing page is a climb up a 3D mountain. The scene is built with three.js on `/berg-3d/` and rendered to 120 stills per orientation, which the home page plays as you scroll, blending neighbouring frames. Every scroll glides to the next stop on the path. This keeps the climb smooth on any device, without running WebGL on the home page.
+The landing page is a climb up a 3D mountain. The scene is built and rendered in Blender (`blender/climb.py`) to 120 stills per orientation, doubled to 239 with frame interpolation, which the home page plays as you scroll. Every scroll glides to the next stop on the path. This keeps the climb smooth on any device, without running WebGL on the home page.
 
 The inner pages share one light design: ice-blue paper, slate ink and a coral accent. The About page opens on a contour map of the climb so far, drawn on a canvas, with a stop for each step.
 
