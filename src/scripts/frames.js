@@ -48,7 +48,7 @@ const show = (k) => {
 };
 
 let fwd, rev, stills, active, ready, switching, still;
-const GAIN = 5, // frames per second per frame of distance: it closes in over about a fifth of a second
+const GAIN = 2.5, // frames per second per frame of distance: it closes in over about 0.4 seconds, a soft glide
   TOP_SPEED = 150, // frames per second at most
   JUMP = 90; // further than this behind or ahead (a dragged scrollbar, a reload): jump, then glide in
 
@@ -97,7 +97,7 @@ function tick() {
     const dir = Math.sign(d);
     return put(dir > 0 ? fwd : rev, Math.max(0, Math.min(N - 1, target - dir * 30)), req);
   }
-  if (ad < 0.7) {
+  if (ad < 0.5) {
     active.pause();
     restStill(p);
     return;
@@ -109,7 +109,7 @@ function tick() {
     return put(wantFwd ? fwd : rev, p, req);
   }
   hideStill();
-  active.playbackRate = Math.max(8, Math.min(TOP_SPEED, ad * GAIN)) / FPS;
+  active.playbackRate = Math.max(3, Math.min(TOP_SPEED, ad * GAIN)) / FPS;
   if (active.paused) active.play().catch(() => {});
   req();
 }
