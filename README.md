@@ -47,7 +47,6 @@ The site runs at http://localhost:4321.
 | `npm run preview`      | Serve the production build     |
 | `npm run format`       | Format all files with Prettier |
 | `npm run format:check` | Check formatting (used in CI)  |
-| `npm run frames`       | Render the landing stills      |
 
 ## Re-rendering the landing frames
 

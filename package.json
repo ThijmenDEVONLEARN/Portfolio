@@ -9,15 +9,13 @@
     "build": "astro build",
     "preview": "astro preview",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "frames": "node scripts/render-frames.mjs"
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "astro": "^7.4.7",
     "three": "0.128.0"
   },
   "devDependencies": {
-    "playwright": "^1.63.0",
     "prettier": "^3.9.10",
     "prettier-plugin-astro": "^1.1.2"
   }

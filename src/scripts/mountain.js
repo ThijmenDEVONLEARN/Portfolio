@@ -5,7 +5,7 @@ import { reduce, root, setStep, setOnStep, currentStep, showHint, prog, stepAt }
 const small = matchMedia('(max-width: 760px)').matches;
 const weak =
   small || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
-// ?hq: the offline render for the home page stills (scripts/render-frames.mjs), at full detail
+// ?hq: full detail, for a sharp look at the live scene
 const hq = new URLSearchParams(location.search).has('hq');
 const Q = hq
   ? {
