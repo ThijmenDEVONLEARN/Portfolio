@@ -66,6 +66,12 @@ The site runs at http://localhost:4321.
 
    Add `--dry` to check the paths and frame mapping without running RIFE.
 
+3. Give the short first stretch (frames 000 to 022) one more frame between every two. This adds `000h.webp` to `021h.webp` to both folders:
+
+   ```
+   node scripts/first-stretch-frames.mjs <rife-ncnn-vulkan folder> <work folder>
+   ```
+
 ## Project structure
 
 ```
