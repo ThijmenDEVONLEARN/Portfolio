@@ -125,7 +125,12 @@ function tick() {
   }
   hideStill();
   active.playbackRate = Math.max(6, Math.min(speedLimit(p), ad * GAIN)) / FPS;
-  if (active.paused) active.play().catch(() => {});
+  // where the browser refuses to play (a phone on power saving), step to the frame instead: less smooth, but it moves
+  if (active.paused)
+    active.play().catch((e) => {
+      if (e.name === 'NotAllowedError' && !active.seeking)
+        active.currentTime = (active === fwd ? target : N - 1 - target) / FPS;
+    });
   req();
 }
 
