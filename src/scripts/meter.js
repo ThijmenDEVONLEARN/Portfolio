@@ -25,13 +25,21 @@ const gpu = (() => {
 
 // the page: gaps between screen updates
 const page = { n: 0, late: 0, worst: 0, gaps: [] };
+// the first seconds after the first scroll, apart from everything after: a cold start shows up there
+let first = 0;
+addEventListener('scroll', () => (first ||= performance.now()), { passive: true });
+const early = () => first && performance.now() - first < 8000;
+const cold = { page: 0, video: 0 };
 let last = 0;
 const frame = (t) => {
   if (last) {
     const g = t - last;
     page.n++;
     if (page.gaps.length < 600) page.gaps.push(g);
-    if (g > 25) page.late++;
+    if (g > 25) {
+      page.late++;
+      if (early()) cold.page++;
+    }
     page.worst = Math.max(page.worst, g);
   }
   last = t;
@@ -58,6 +66,7 @@ function watch(v) {
       vid.shown++;
       if (g > Math.max(34, 2.2 * due)) {
         vid.late[zoneOf(f)]++;
+        if (early()) cold.video++;
         vid.worst = Math.max(vid.worst, g);
       }
     }
@@ -93,6 +102,7 @@ const report = () => {
     `video: ${vid.late.begin + vid.late.midden + vid.late.top} late beelden van ${vid.shown}, ergste ${Math.round(vid.worst)} ms`,
     `  begin ${vid.late.begin} | midden ${vid.late.midden} | top ${vid.late.top}`,
     `  wachten op data: ${vid.waiting}x, sprongen: ${vid.seeks}x`,
+    `eerste 8 s na de eerste scroll: pagina ${cold.page}, video ${cold.video}`,
     ...vs,
   ].join('\n');
 };

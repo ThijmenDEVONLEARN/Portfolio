@@ -141,11 +141,20 @@ function restStill(f) {
   if (Math.abs(AT[j] - f) > 1.6 && !reduce) return hideStill();
   if (still === j) return;
   hideStill();
-  stills[j].classList.add('on');
   still = j;
   show(STOPS[j]);
-  root.classList.add('gl-on');
+  // decoded first, off the main thread: showing an undecoded image would hold the page up for a moment
+  const img = stills[j];
+  const up = () => {
+    if (still === j) img.classList.add('on');
+    root.classList.add('gl-on');
+  };
+  img.decode().then(up, up);
 }
+
+// The first time a video plays, its decoder has to start up, which is felt as a hitch on the first scroll.
+// So each video runs for a moment right after it loads, unseen, and is put back.
+const warm = (v, then) => v.play().then(() => setTimeout(then, 150), then);
 
 function build() {
   ready = false;
@@ -184,10 +193,29 @@ function build() {
   fwd.addEventListener(
     'loadeddata',
     () => {
-      put(fwd, Math.round(f0), () => {
-        ready = true;
-        req();
-      });
+      warm(fwd, () =>
+        put(fwd, Math.round(f0), () => {
+          ready = true;
+          req();
+          // and the stills of the other stops, so none is decoded for the first time mid-scroll
+          stills.forEach((img) => img.decode().catch(() => {}));
+        }),
+      );
+    },
+    { once: true },
+  );
+  const r = rev;
+  r.addEventListener(
+    'loadeddata',
+    () => {
+      // only while it is not in use; a scroll back up that came first has warmed it already
+      const idle = () => active !== r && !switching;
+      if (idle())
+        warm(r, () => {
+          if (!idle()) return;
+          r.pause();
+          r.currentTime = 0;
+        });
     },
     { once: true },
   );
