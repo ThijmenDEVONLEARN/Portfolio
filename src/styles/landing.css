@@ -305,6 +305,48 @@ body {
   color: var(--muted);
   transition: opacity 0.4s;
 }
+.gate {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgb(0 0 0 / 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.4s,
+    visibility 0.4s;
+}
+.gate.on {
+  opacity: 1;
+  visibility: visible;
+}
+.gate > div {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  max-width: 320px;
+  padding: 26px 30px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 14px;
+  background: rgb(12 14 18 / 0.82);
+  color: var(--ink);
+  text-align: center;
+}
+.gate p {
+  margin: 0;
+  font:
+    500 14px/1.5 'Geist Mono',
+    monospace;
+}
+.gate b {
+  font:
+    600 44px/1 'Geist Mono',
+    monospace;
+  color: var(--acc);
+}
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

@@ -299,5 +299,25 @@ if (!reduce) {
 }
 
 build();
+
+// A notice before the climb, with a count of three seconds in which scrolling waits. It tells the
+// visitor what to do, and the videos use the time to load and warm up.
+const gate = document.getElementById('gate');
+if (gate && !reduce && scrollY < 2) {
+  const count = gate.querySelector('b');
+  const hold = (e) =>
+    (e.type !== 'keydown' || /^(Arrow|Page|Home|End| $)/.test(e.key)) && e.preventDefault();
+  const kinds = ['wheel', 'touchmove', 'keydown'];
+  const opts = { passive: false, capture: true };
+  kinds.forEach((k) => addEventListener(k, hold, opts));
+  gate.classList.add('on');
+  let s = 3;
+  const id = setInterval(() => {
+    if (--s) return (count.textContent = s);
+    clearInterval(id);
+    kinds.forEach((k) => removeEventListener(k, hold, opts));
+    gate.classList.remove('on');
+  }, 1000);
+}
 // ?meter in the address shows a meter that counts stutters on this machine
 if (new URLSearchParams(location.search).has('meter')) import('./meter.js');
