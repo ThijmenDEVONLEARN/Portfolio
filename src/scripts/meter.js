@@ -42,7 +42,7 @@ requestAnimationFrame(frame);
 document.addEventListener('visibilitychange', () => (last = 0));
 
 // the video: frames that reach the screen late while it plays at a real pace, per part of the climb
-const zones = { begin: [0, 88], midden: [88, 470], top: [470, 521] };
+const zones = { begin: [0, 176], midden: [176, 558], top: [558, 660] };
 const vid = { shown: 0, waiting: 0, seeks: 0, late: { begin: 0, midden: 0, top: 0 }, worst: 0 };
 const zoneOf = (f) => Object.keys(zones).find((z) => f >= zones[z][0] && f < zones[z][1]) || 'top';
 function watch(v) {
@@ -50,7 +50,7 @@ function watch(v) {
   v.__meter = true;
   let prev = 0;
   const cb = (now, meta) => {
-    const f = v.src.includes('rev') ? 520 - meta.mediaTime * 60 : meta.mediaTime * 60;
+    const f = v.src.includes('rev') ? 659 - meta.mediaTime * 60 : meta.mediaTime * 60;
     // late: clearly longer than the pace the video plays at asks for
     const due = 1000 / (60 * v.playbackRate);
     if (prev && !v.paused && v.playbackRate * 60 >= 40) {

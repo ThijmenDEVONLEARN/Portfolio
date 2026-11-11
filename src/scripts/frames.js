@@ -4,11 +4,14 @@
 // Video is decoded by the graphics card, which keeps this smooth. At rest on a stop, a sharp still lies on top.
 import { reduce, root, setStep, showHint, prog } from './climb.js';
 
-// the scroll stops (climb progress) and the video frame each one rests on; 521 frames, 60 per second
+// the scroll stops (climb progress) and the video frame each one rests on; 660 frames, 60 per second
+// (frame 0 is a lead-in frame the interpolation puts before the first real one, so the climb starts at 1).
+// The video itself passes slowly through the start and the end: it has twice the frames there
+// (scripts/build-climb.mjs), so the page never plays it slower than its own pace, which would stutter.
 const STOPS = [0, 0.0924, 0.2773, 0.4622, 0.6555, 1];
-const AT = [0, 88, 176, 264, 356, 520];
+const AT = [1, 177, 265, 353, 445, 659];
 const STILL = ['000', '022', '066', '110', '156', '238'];
-const N = 521,
+const N = 660,
   FPS = 60;
 const seq = document.getElementById('seq');
 const stage = seq.parentElement;
@@ -51,15 +54,15 @@ let fwd, rev, stills, active, ready, switching, still;
 const GAIN = 2.5, // frames per second per frame of distance: it closes in over about 0.4 seconds, a soft glide
   TOP_SPEED = 180; // frames per second at most, in the middle: three times the video's own pace, light to decode
 
-// The start and the end are slow however hard you scroll: the first stretch is where the video still has
-// to start up, and the last one is the busiest, so the speed limit is low there and rises in between.
+// The start and the end are slow however hard you scroll, on top of the slowness in the video itself.
+// Never below about 1.6 times the video's pace while it runs, so every screen update gets a new frame.
 const speedLimit = (f) => {
   const ramp = (a, b, x, y) => x + ((f - a) / (b - a)) * (y - x);
-  if (f <= AT[1]) return 48; // up to the first dot
-  if (f < 160) return ramp(AT[1], 160, 48, TOP_SPEED);
-  if (f <= 380) return TOP_SPEED;
-  if (f < 470) return ramp(380, 470, TOP_SPEED, 60);
-  return 60; // the last stretch up to the top
+  if (f <= AT[1]) return 96; // up to the first dot
+  if (f < 250) return ramp(AT[1], 250, 96, TOP_SPEED);
+  if (f <= 468) return TOP_SPEED;
+  if (f < 558) return ramp(468, 558, TOP_SPEED, 120);
+  return 120; // the last stretch up to the top
 };
 
 // where the video is, in frames
