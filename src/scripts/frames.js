@@ -4,12 +4,12 @@
 // Video is decoded by the graphics card, which keeps this smooth. At rest on a stop, a sharp still lies on top.
 import { reduce, root, setStep, showHint, prog } from './climb.js';
 
-// the scroll stops (climb progress) and the frame each one rests on; 261 frames, 30 per second in the video
+// the scroll stops (climb progress) and the video frame each one rests on; 521 frames, 60 per second
 const STOPS = [0, 0.0924, 0.2773, 0.4622, 0.6555, 1];
-const AT = [0, 44, 88, 132, 178, 260];
+const AT = [0, 88, 176, 264, 356, 520];
 const STILL = ['000', '022', '066', '110', '156', '238'];
-const N = 261,
-  FPS = 30;
+const N = 521,
+  FPS = 60;
 const seq = document.getElementById('seq');
 const stage = seq.parentElement;
 const portrait = matchMedia('(orientation: portrait)');
@@ -49,18 +49,17 @@ const show = (k) => {
 
 let fwd, rev, stills, active, ready, switching, still;
 const GAIN = 2.5, // frames per second per frame of distance: it closes in over about 0.4 seconds, a soft glide
-  TOP_SPEED = 150, // frames per second at most, in the middle of the climb
-  JUMP = 90; // further than this behind or ahead (a dragged scrollbar, a reload): jump, then glide in
+  TOP_SPEED = 180; // frames per second at most, in the middle: three times the video's own pace, light to decode
 
 // The start and the end are slow however hard you scroll: the first stretch is where the video still has
 // to start up, and the last one is the busiest, so the speed limit is low there and rises in between.
 const speedLimit = (f) => {
   const ramp = (a, b, x, y) => x + ((f - a) / (b - a)) * (y - x);
-  if (f <= AT[1]) return 24; // up to the first dot
-  if (f < 80) return ramp(AT[1], 80, 24, TOP_SPEED);
-  if (f <= 190) return TOP_SPEED;
-  if (f < 235) return ramp(190, 235, TOP_SPEED, 36);
-  return 36; // the last stretch up to the top
+  if (f <= AT[1]) return 48; // up to the first dot
+  if (f < 160) return ramp(AT[1], 160, 48, TOP_SPEED);
+  if (f <= 380) return TOP_SPEED;
+  if (f < 470) return ramp(380, 470, TOP_SPEED, 60);
+  return 60; // the last stretch up to the top
 };
 
 // where the video is, in frames
@@ -88,9 +87,15 @@ function put(v, frame, then) {
   v.currentTime = t;
 }
 
+// landscape has a lighter 1080p video: on a screen it covers without scaling up much, the bigger one
+// would only cost the graphics card more
+const base = () =>
+  set === 'l' && Math.max(innerWidth / 1920, innerHeight / 1080) * devicePixelRatio <= 1.1
+    ? 'climb-1080'
+    : 'climb';
 const loadRev = () => {
   const v = rev;
-  if (!v.src) v.src = `/berg/${set}/climb-rev.mp4`;
+  if (!v.src) v.src = `/berg/${set}/${base()}-rev.mp4`;
 };
 
 let raf = 0;
@@ -104,14 +109,7 @@ function tick() {
   const d = target - p;
   const ad = Math.abs(d);
   show(progOf(p));
-  // far behind (a dragged scrollbar, a reload): jump toward it, but only through the fast middle;
-  // the slow start and end are always played, however far the scroll is ahead
-  if (ad > JUMP && p > 80 && p < 190) {
-    const dir = Math.sign(d);
-    const to = Math.max(80, Math.min(190, target - dir * 30));
-    if (Math.abs(to - p) > 30) return put(dir > 0 ? fwd : rev, to, req);
-  }
-  if (ad < 0.5) {
+  if (ad < 1) {
     active.pause();
     restStill(p);
     return;
@@ -119,11 +117,11 @@ function tick() {
   // the other way: only past a small margin, so a hair of overshoot does not flip the video
   const wantFwd = d > 0;
   if ((active === fwd) !== wantFwd) {
-    if (ad < 1.5) return (active.pause(), restStill(p));
+    if (ad < 3) return (active.pause(), restStill(p));
     return put(wantFwd ? fwd : rev, p, req);
   }
   hideStill();
-  active.playbackRate = Math.max(3, Math.min(speedLimit(p), ad * GAIN)) / FPS;
+  active.playbackRate = Math.max(6, Math.min(speedLimit(p), ad * GAIN)) / FPS;
   if (active.paused) active.play().catch(() => {});
   req();
 }
@@ -137,7 +135,7 @@ const hideStill = () => {
 function restStill(f) {
   let j = 0;
   AT.forEach((a, i) => Math.abs(a - f) < Math.abs(AT[j] - f) && (j = i));
-  if (Math.abs(AT[j] - f) > 0.8 && !reduce) return hideStill();
+  if (Math.abs(AT[j] - f) > 1.6 && !reduce) return hideStill();
   if (still === j) return;
   hideStill();
   stills[j].classList.add('on');
@@ -165,7 +163,7 @@ function build() {
     v.playsInline = true;
     v.preload = 'auto';
     v.disablePictureInPicture = true;
-    if (name === 'climb') v.src = `/berg/${set}/${name}.mp4`;
+    if (name === 'climb') v.src = `/berg/${set}/${base()}.mp4`;
     seq.append(v);
     return v;
   });

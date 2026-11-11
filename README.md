@@ -72,7 +72,7 @@ The site runs at http://localhost:4321.
    node scripts/first-stretch-frames.mjs <rife-ncnn-vulkan folder> <work folder>
    ```
 
-4. Cut the two videos the home page scrubs with the scroll (needs `ffmpeg` on the PATH). This writes `climb.mp4` and `climb-rev.mp4` (the same climb backward) to both folders, and takes a couple of minutes:
+4. Cut the videos the home page scrubs with the scroll (needs `ffmpeg` on the PATH). ffmpeg adds a motion-interpolated frame between every two, so the climb is 521 frames at 60 per second. This writes `climb.mp4` and `climb-rev.mp4` (the same climb backward) to both folders, plus a lighter `climb-1080` pair for landscape, and takes about ten minutes:
 
    ```
    node scripts/build-climb.mjs
