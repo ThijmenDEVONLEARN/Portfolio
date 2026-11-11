@@ -271,3 +271,5 @@ if (!reduce) {
 }
 
 build();
+// ?meter in the address shows a meter that counts stutters on this machine
+if (new URLSearchParams(location.search).has('meter')) import('./meter.js');
