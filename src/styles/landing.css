@@ -6,8 +6,10 @@
   --on-acc: #1a0f08;
   --bg: #0d1430;
   --scrim: rgb(8 10 20 / 0.72);
-  --panel: rgb(13 20 48 / 0.62);
-  --line: rgb(255 255 255 / 0.2);
+  --panel: #ffffff;
+  --panel-ink: #0d1430;
+  --panel-muted: rgb(13 20 48 / 0.72);
+  --line: rgb(13 20 48 / 0.14);
   color-scheme: dark;
 }
 * {
@@ -336,8 +338,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--panel);
-  backdrop-filter: blur(14px);
-  color: var(--ink);
+  color: var(--panel-ink);
   transform: translateY(12px);
   transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -384,13 +385,13 @@ body {
   margin: 0;
   font-size: 14px;
   line-height: 1.45;
-  color: var(--muted);
+  color: var(--panel-muted);
 }
 .gate strong {
   display: block;
   font-size: 17px;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--panel-ink);
 }
 @media (prefers-reduced-motion: reduce) {
   * {
