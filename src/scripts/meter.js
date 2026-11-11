@@ -30,6 +30,12 @@ let first = 0;
 addEventListener('scroll', () => (first ||= performance.now()), { passive: true });
 const early = () => first && performance.now() - first < 8000;
 const cold = { page: 0, video: 0 };
+// when the hitches came, in seconds after the first scroll, and how long each was
+const when = [];
+const note = (kind, g) =>
+  first &&
+  when.length < 24 &&
+  when.push(`${kind}${((performance.now() - first) / 1000).toFixed(1)}s/${Math.round(g)}`);
 let last = 0;
 const frame = (t) => {
   if (last) {
@@ -39,6 +45,7 @@ const frame = (t) => {
     if (g > 25) {
       page.late++;
       if (early()) cold.page++;
+      if (g > 40) note('p', g);
     }
     page.worst = Math.max(page.worst, g);
   }
@@ -67,6 +74,7 @@ function watch(v) {
       if (g > Math.max(34, 2.2 * due)) {
         vid.late[zoneOf(f)]++;
         if (early()) cold.video++;
+        note('v', g);
         vid.worst = Math.max(vid.worst, g);
       }
     }
@@ -103,6 +111,8 @@ const report = () => {
     `  begin ${vid.late.begin} | midden ${vid.late.midden} | top ${vid.late.top}`,
     `  wachten op data: ${vid.waiting}x, sprongen: ${vid.seeks}x`,
     `eerste 8 s na de eerste scroll: pagina ${cold.page}, video ${cold.video}`,
+    `momenten (p=pagina v=video, tijd/duur ms): ${when.join(' ') || '-'}`,
+    `modus: ${import.meta.env.DEV ? 'dev-server' : 'productie-build'}`,
     ...vs,
   ].join('\n');
 };

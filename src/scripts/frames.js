@@ -179,8 +179,9 @@ function build() {
     seq.append(v);
     return v;
   });
-  // the backward video is the same size again, so it waits until the forward one is in, or is asked for
-  fwd.addEventListener('canplaythrough', () => setTimeout(loadRev, 2000), { once: true });
+  // the backward video is the same size again, so it waits until the forward one is in, or is asked for;
+  // then at once, so that it is loaded and warm before the first scroll rather than during it
+  fwd.addEventListener('canplaythrough', loadRev, { once: true });
   active = fwd;
   // the nearest still is up as soon as it is decoded; scrolling works once the forward video can seek
   let near = 0;
@@ -197,8 +198,6 @@ function build() {
         put(fwd, Math.round(f0), () => {
           ready = true;
           req();
-          // and the stills of the other stops, so none is decoded for the first time mid-scroll
-          stills.forEach((img) => img.decode().catch(() => {}));
         }),
       );
     },
