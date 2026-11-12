@@ -18,6 +18,7 @@ const services = [
     title: 'Kleine AI-workflows',
     text: 'Eenvoudige automatiseringen met AI en n8n die terugkerend werk van je overnemen.',
     items: ['Kleine, overzichtelijke klussen', 'Eerlijk vooraf of het lukt'],
+    brand: { href: 'https://timeturn.nl', logo: '/images/timeturn.webp', name: 'TimeTurn' },
     note: 'AI-workflows leer ik nog. Daarom neem ik alleen kleine klussen aan die ik goed kan afmaken.',
   },
 ];
@@ -61,6 +62,18 @@ const steps = [
                 <li>{t}</li>
               ))}
             </ul>
+            {s.brand && (
+              <a class="svc__brand" href={s.brand.href} target="_blank" rel="noopener">
+                <img
+                  src={s.brand.logo}
+                  width="800"
+                  height="224"
+                  alt={s.brand.name}
+                  loading="lazy"
+                />
+                <span>Bekijk {s.brand.name} op timeturn.nl ↗</span>
+              </a>
+            )}
             <p class="svc__note">
               <strong>Eerlijk gezegd</strong>
               {s.note}

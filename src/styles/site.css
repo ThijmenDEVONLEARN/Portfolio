@@ -802,6 +802,26 @@
   border-bottom: var(--rule-hair) solid var(--color-rule);
   background: var(--color-paper-2);
 }
+.svc__brand {
+  display: grid;
+  gap: var(--space-xs);
+  justify-items: start;
+  text-decoration: none;
+  color: var(--color-ink);
+}
+.svc__brand img {
+  width: min(100%, 280px);
+  height: auto;
+  border-radius: var(--radius-card);
+  box-shadow: 0 0 0 1px var(--color-rule);
+}
+.svc__brand span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.svc__brand:hover span {
+  color: var(--color-accent);
+}
 .svc__note {
   display: grid;
   gap: var(--space-2xs);
