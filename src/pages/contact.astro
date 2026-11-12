@@ -16,7 +16,7 @@ const topics = [
   <div class="container">
     <div class="head">
       <h1>Wat gaan we bouwen?</h1>
-      <p class="lead">Stuur een bericht. Ik reageer meestal binnen een paar dagen.</p>
+      <p class="lead">Stuur een bericht. Ik reageer binnen een dag.</p>
     </div>
     <div class="sec ct">
       <!-- data-endpoint stays empty until the form is wired to a mail service with Turnstile -->
@@ -96,7 +96,7 @@ const topics = [
     try {
       const r = await fetch(form.dataset.endpoint, { method: 'POST', body: new FormData(form) });
       help.textContent = r.ok
-        ? 'Bericht verstuurd. Ik reageer binnen een paar dagen.'
+        ? 'Bericht verstuurd. Ik reageer binnen een dag.'
         : 'Dat ging niet goed. Probeer het zo nog eens.';
     } catch {
       help.textContent = 'Dat ging niet goed. Probeer het zo nog eens.';
