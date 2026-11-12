@@ -62,11 +62,6 @@ const topics = [
             LinkedIn <small>Thijmen Vollenbroek</small>
           </a>
         </li>
-        <li>
-          <div>
-            Spambeveiliging <small>Cloudflare Turnstile</small>
-          </div>
-        </li>
       </ul>
     </div>
   </div>
@@ -90,7 +85,8 @@ const topics = [
       return;
     }
     if (!form.dataset.endpoint) {
-      help.textContent = 'Er is niets verstuurd: dit formulier is nog niet gekoppeld.';
+      help.textContent =
+        'Er is niets verstuurd: dit formulier werkt nog niet. Stuur me voorlopig een bericht via LinkedIn.';
       return;
     }
     try {
