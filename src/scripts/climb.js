@@ -1,5 +1,7 @@
 // The stops on the climb and the text beside them, shared by the frame player and the live 3D scene.
-export const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// reduced motion, or the browser asks to save data: stills only, no videos
+export const reduce =
+  matchMedia('(prefers-reduced-motion: reduce)').matches || navigator.connection?.saveData === true;
 export const root = document.documentElement;
 export const steps = [
   { t: '', s: 'Ik bouw websites en automatiseringen. Scroll en klim mee.' },
