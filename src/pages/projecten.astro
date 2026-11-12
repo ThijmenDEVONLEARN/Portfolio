@@ -21,6 +21,20 @@ const projects = [
     repo: '',
     slot: 'dashboard',
     alt: 'Screenshot van het persoonlijk dashboard',
+    note: 'De schermafbeeldingen tonen testdata, geen echte gegevens.',
+    gallery: [
+      ['vandaag', 'Vandaag: overzicht van de dag'],
+      ['taken', 'Taken'],
+      ['planning', 'Planning: weekagenda'],
+      ['routines', 'Routines'],
+      ['notities', 'Notities: editor'],
+      ['notities-kaart', 'Notities: kaart'],
+      ['financien', 'Financiën: overzicht'],
+      ['rekeningen', 'Financiën: rekeningen'],
+      ['beveiliging', 'Beveiliging'],
+      ['gebruikers', 'Gebruikers'],
+      ['vormgeving', 'Vormgeving'],
+    ],
   },
   {
     title: 'Claude-brein',
@@ -59,20 +73,74 @@ const projects = [
             )}
             {p.repo && <a href={p.repo}>Code op GitHub</a>}
           </div>
-          <figure class="shot" data-slot={p.slot} data-alt={p.alt}>
-            {p.img && (
-              <img
-                src={p.img}
-                width="1440"
-                height="900"
-                alt={p.alt}
-                loading={i === 0 ? 'eager' : 'lazy'}
-                decoding="async"
-              />
-            )}
-          </figure>
+          {p.gallery ? (
+            <figure class="carousel" aria-roledescription="carousel" aria-label={p.title}>
+              <div class="carousel__track" tabindex="0">
+                {p.gallery.map(([file, label], n) => (
+                  <img
+                    src={`/images/dashboard/${file}.webp`}
+                    alt={`${label} (testdata)`}
+                    data-label={label}
+                    loading={n === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
+                  />
+                ))}
+              </div>
+              <figcaption>
+                <button type="button" data-dir="-1" aria-label="Vorige foto">
+                  ←
+                </button>
+                <span aria-live="polite">
+                  <b>1 / {p.gallery.length}</b> {p.gallery[0][1]}
+                </span>
+                <button type="button" data-dir="1" aria-label="Volgende foto">
+                  →
+                </button>
+                <small>{p.note}</small>
+              </figcaption>
+            </figure>
+          ) : (
+            <figure class="shot" data-slot={p.slot} data-alt={p.alt}>
+              {p.img && (
+                <img
+                  src={p.img}
+                  width="1440"
+                  height="900"
+                  alt={p.alt}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  decoding="async"
+                />
+              )}
+            </figure>
+          )}
         </li>
       ))}
     </ol>
   </div>
 </Page>
+
+<script>
+  for (const c of document.querySelectorAll('.carousel')) {
+    const track = c.querySelector('.carousel__track');
+    const imgs = [...track.children];
+    const out = c.querySelector('[aria-live]');
+    let i = 0;
+    let target = null; // skip scroll updates while a button-scroll is underway
+    const label = (n) =>
+      (out.innerHTML = `<b>${n + 1} / ${imgs.length}</b> ${imgs[n].dataset.label}`);
+    const show = (n) => {
+      i = target = (n + imgs.length) % imgs.length;
+      label(i);
+      track.scrollTo({ left: imgs[i].offsetLeft - track.offsetLeft, behavior: 'smooth' });
+    };
+    c.querySelectorAll('button').forEach(
+      (b) => (b.onclick = () => show(i + Number(b.dataset.dir))),
+    );
+    track.addEventListener('scroll', () => {
+      const cur = Math.round(track.scrollLeft / track.clientWidth);
+      if (target !== null && cur !== target) return;
+      target = null;
+      if (cur !== i) label((i = cur));
+    });
+  }
+</script>
