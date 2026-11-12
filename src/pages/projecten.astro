@@ -23,17 +23,61 @@ const projects = [
     alt: 'Screenshot van het persoonlijk dashboard',
     note: 'De schermafbeeldingen tonen testdata, geen echte gegevens.',
     gallery: [
-      ['vandaag', 'Vandaag: overzicht van de dag'],
-      ['taken', 'Taken'],
-      ['planning', 'Planning: weekagenda'],
-      ['routines', 'Routines'],
-      ['notities', 'Notities: editor'],
-      ['notities-kaart', 'Notities: kaart'],
-      ['financien', 'Financiën: overzicht'],
-      ['rekeningen', 'Financiën: rekeningen'],
-      ['beveiliging', 'Beveiliging'],
-      ['gebruikers', 'Gebruikers'],
-      ['vormgeving', 'Vormgeving'],
+      [
+        'vandaag',
+        'Vandaag: overzicht van de dag',
+        'De startpagina. Je ziet in één keer wat nu moet, de taken en afspraken van vandaag, hoeveel geld je vandaag nog kunt uitgeven, je gewoontes en de ochtendroutine.',
+      ],
+      [
+        'taken',
+        'Taken',
+        'Alle taken, gegroepeerd in vandaag, morgen en later. Elke taak heeft een datum en een geschatte duur, en je kunt wisselen tussen dag, week, maand en jaar.',
+      ],
+      [
+        'planning',
+        'Planning: weekagenda',
+        'Een weekagenda waarin afspraken uit Google, Outlook en iCloud samenkomen met je taken. Onderaan zie je wat de AI-assistent heeft gedaan.',
+      ],
+      [
+        'routines',
+        'Routines',
+        'Gewoontes met een raster van de laatste twaalf weken, een teller voor dagen op rij en een doel met voortgang, zoals een boek uitlezen.',
+      ],
+      [
+        'notities',
+        'Notities: editor',
+        'Een notitie-editor met mappen. Je schrijft in Markdown en ziet het resultaat ernaast, met afvinklijstjes en links tussen notities en taken.',
+      ],
+      [
+        'notities-kaart',
+        'Notities: kaart',
+        'Dezelfde notities als kaart. Je sleept mappen en notities op een werkblad, zodat je ziet wat bij elkaar hoort.',
+      ],
+      [
+        'financien',
+        'Financiën: overzicht',
+        'Het geldoverzicht: hoeveel je vandaag nog vrij kunt uitgeven, je vaste lasten per maand en per jaar, en spaardoelen met een streefdatum.',
+      ],
+      [
+        'rekeningen',
+        'Financiën: rekeningen',
+        'Je rekeningen met saldo, vaste lasten en transacties. Het dashboard kan alleen lezen en kan nooit zelf geld overmaken.',
+      ],
+      [
+        'beveiliging',
+        'Beveiliging',
+        'Een overzicht van de eigen server waar het dashboard op draait: containers, inlogpogingen, updates, back-ups en een checklist om de server veilig te houden.',
+      ],
+      [
+        'gebruikers',
+        'Gebruikers',
+        'Wie toegang heeft. Je kunt iemand uitnodigen met een code, zonder code kan niemand een account maken.',
+      ],
+      [
+        'vormgeving',
+        'Vormgeving',
+        'Instellingen voor het uiterlijk: kies een stijl zoals Licht, Nacht of Klei, stel minder beweging in en bepaal welke schermen in het menu staan.',
+      ],
     ],
   },
   {
@@ -76,11 +120,12 @@ const projects = [
           {p.gallery ? (
             <figure class="carousel" aria-roledescription="carousel" aria-label={p.title}>
               <div class="carousel__track" tabindex="0">
-                {p.gallery.map(([file, label], n) => (
+                {p.gallery.map(([file, label, info], n) => (
                   <img
                     src={`/images/dashboard/${file}.webp`}
                     alt={`${label} (testdata)`}
                     data-label={label}
+                    data-info={info}
                     loading={n === 0 ? 'eager' : 'lazy'}
                     decoding="async"
                   />
@@ -116,6 +161,23 @@ const projects = [
         </li>
       ))}
     </ol>
+    <dialog class="zoom" id="zoom" aria-label="Foto in het groot">
+      <img alt="" />
+      <div class="zoom__info">
+        <strong></strong>
+        <p></p>
+        <small></small>
+      </div>
+      <button type="button" data-step="-1" aria-label="Vorige foto">
+        ←
+      </button>
+      <button type="button" data-step="1" aria-label="Volgende foto">
+        →
+      </button>
+      <button type="button" class="zoom__close" aria-label="Sluiten">
+        ✕
+      </button>
+    </dialog>
   </div>
 </Page>
 
@@ -143,4 +205,38 @@ const projects = [
       if (cur !== i) label((i = cur));
     });
   }
+
+  // Click a screenshot to see it large; arrows step through its carousel.
+  const zoom = document.getElementById('zoom') as HTMLDialogElement;
+  const big = zoom.querySelector('img')!;
+  const [head, cap, note] = ['strong', 'p', 'small'].map((t) => zoom.querySelector(t)!);
+  let set: HTMLImageElement[] = [];
+  let at = 0;
+  const open = (n: number) => {
+    at = (n + set.length) % set.length;
+    big.src = set[at].src;
+    big.alt = set[at].alt;
+    const { label, info } = set[at].dataset;
+    head.textContent = set.length > 1 ? `${at + 1} / ${set.length}  ${label}` : '';
+    cap.textContent = info ?? set[at].alt;
+    note.textContent = set.length > 1 ? 'Testdata, geen echte gegevens.' : '';
+    zoom.toggleAttribute('data-single', set.length < 2);
+    if (!zoom.open) zoom.showModal();
+  };
+  document.querySelectorAll<HTMLImageElement>('.carousel img, .shot img').forEach((img) => {
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', () => {
+      set = [...(img.parentElement!.querySelectorAll('img') as NodeListOf<HTMLImageElement>)];
+      open(set.indexOf(img));
+    });
+  });
+  zoom
+    .querySelectorAll<HTMLButtonElement>('[data-step]')
+    .forEach((b) => b.addEventListener('click', () => open(at + Number(b.dataset.step))));
+  zoom.querySelector('.zoom__close')!.addEventListener('click', () => zoom.close());
+  zoom.addEventListener('click', (e) => e.target === zoom && zoom.close());
+  zoom.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' && set.length > 1) open(at - 1);
+    if (e.key === 'ArrowRight' && set.length > 1) open(at + 1);
+  });
 </script>
