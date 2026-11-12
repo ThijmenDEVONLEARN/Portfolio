@@ -38,6 +38,7 @@ const current = (href: string) => (href === path ? 'page' : undefined);
       <button class="btn burger" id="burger" aria-expanded="false" aria-controls="menu">
         Menu
       </button>
+      <!-- keep in step with src/data/pages.ts -->
       <nav class="menu" id="menu" aria-label="Hoofdmenu">
         <a href="/over-mij/" aria-current={current('/over-mij/')}>
           Over mij

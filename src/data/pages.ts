@@ -1,4 +1,5 @@
-// Order of the inner pages: drives the menu state and the "Verder naar" link at the bottom.
+// Order of the inner pages: drives the "Verder naar" link at the bottom. The menu in layouts/Page.astro lists
+// them by hand; keep both in step.
 export const pages = [
   { href: '/over-mij/', title: 'Over mij' },
   { href: '/over-mij/skills/', title: 'Skills' },
