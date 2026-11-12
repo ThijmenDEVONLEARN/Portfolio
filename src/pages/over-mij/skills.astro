@@ -6,13 +6,21 @@ const levels = [
     name: 'Dagelijks',
     filled: 3,
     text: 'Hier werk ik elke dag mee.',
-    tags: ['HTML', 'CSS', 'JavaScript', 'C# en ASP.NET MVC', 'Git'],
+    tags: ['HTML', 'CSS', 'Bootstrap', 'Tailwind'],
   },
   {
     name: 'Kan ik mee werken',
     filled: 2,
-    text: 'Kan ik zelfstandig een opdracht mee doen.',
-    tags: ['SQL en databases', 'PHP', 'TypeScript', 'Bootstrap', 'Linux'],
+    text: 'Beheers ik nog niet helemaal, maar wel voldoende om mee te bouwen.',
+    tags: [
+      'JavaScript',
+      'C# en ASP.NET MVC',
+      'SQL en databases',
+      'PHP',
+      'TypeScript',
+      'Git',
+      'Linux',
+    ],
   },
   {
     name: 'Aan het leren',
@@ -27,7 +35,10 @@ const levels = [
   <div class="container">
     <div class="head">
       <h1>Wat ik kan.</h1>
-      <p class="lead">Eerlijk ingedeeld in drie niveaus. Geen procenten, want die zeggen niets.</p>
+      <p class="lead">
+        Ik weet al veel, maar beheers nog niet alles volledig. Daarom eerlijk ingedeeld in drie
+        niveaus.
+      </p>
     </div>
     <ul class="sec levels">
       {levels.map((l) => (
