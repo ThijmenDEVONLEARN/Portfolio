@@ -5,3 +5,8 @@ dist/
 .env.*
 .DS_Store
 .hallmark/
+previews/
+*.blend
+*.blend1
+.dev.vars
+.wrangler/

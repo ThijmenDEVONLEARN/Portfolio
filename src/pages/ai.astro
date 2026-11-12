@@ -1,9 +1,28 @@
 ---
 import Page from '../layouts/Page.astro';
 
-const wel = ['Voorbeeld', 'Voorbeeld', 'Voorbeeld'];
-const niet = ['Voorbeeld', 'Voorbeeld'];
-const method = ['Zelf denken', 'Samen bouwen', 'Controleren', 'Begrijpen'];
+const wel = [
+  'Code schrijven, terwijl ik bepaal wat er gebouwd wordt en hoe het eruitziet.',
+  'Schetsen en varianten maken, zodat ik kan kiezen voordat er iets verandert.',
+  'Fouten opsporen: ik test en meet op mijn eigen laptop, AI zoekt de oorzaak.',
+  'Leren: ik vraag waarom iets zo werkt.',
+];
+const niet = [
+  'Mijn eigen verhaal. De teksten over mij komen uit mijn eigen antwoorden.',
+  'De eindbeslissing. Ik kies, test en zet het zelf live.',
+];
+const method = [
+  { title: 'Zelf denken', text: 'Ik bepaal eerst wat ik wil en hoe het eruit moet zien.' },
+  { title: 'Samen bouwen', text: 'AI schrijft de code, ik stuur bij met feedback en schetsen.' },
+  {
+    title: 'Controleren',
+    text: 'Ik test het zelf, op mijn laptop en telefoon, en meet waar het hapert.',
+  },
+  {
+    title: 'Begrijpen',
+    text: 'Ik vraag waarom iets werkt, zodat ik het de volgende keer zelf kan.',
+  },
+];
 ---
 
 <Page title="AI" description="Hoe Thijmen AI gebruikt als gereedschap, en waar niet voor.">
@@ -11,7 +30,8 @@ const method = ['Zelf denken', 'Samen bouwen', 'Controleren', 'Begrijpen'];
     <div class="head">
       <h1>AI als gereedschap.</h1>
       <p class="lead">
-        Voorlopige tekst over hoe je met AI werkt en waarom je daar open over bent.
+        Ik bouw samen met AI, en daar ben ik open over. Ik bepaal wat er gemaakt wordt, AI helpt me
+        het sneller te bouwen.
       </p>
     </div>
     <section class="sec" data-switch>
@@ -49,17 +69,12 @@ const method = ['Zelf denken', 'Samen bouwen', 'Controleren', 'Begrijpen'];
       <ol class="method">
         {method.map((m) => (
           <li>
-            <h3>{m}</h3>
-            <p class="muted">Voorlopige tekst.</p>
+            <h3>{m.title}</h3>
+            <p class="muted">{m.text}</p>
           </li>
         ))}
       </ol>
     </section>
-    <div class="sec see see--narrow">
-      <a href="/projecten/">
-        Projecten <small>gemaakt met AI</small>
-      </a>
-    </div>
   </div>
 </Page>
 

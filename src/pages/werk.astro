@@ -1,7 +1,15 @@
 ---
 import Page from '../layouts/Page.astro';
 
-const wishes = ['Soort werk', 'Uren', 'Vanaf', 'Regio'];
+const wishes = [
+  ['Soort werk', 'Bijbaan als developer of een afstudeerstage'],
+  ['Uren', '16 uur per week'],
+  [
+    'Wanneer',
+    'Bijbaan: na school, vanaf half 3 of half 4, afhankelijk van mijn rooster. Stage: hele dagen, want stage valt onder school en daar krijg ik vrij voor.',
+  ],
+  ['Regio', 'Het liefst Hengelo, Enschede of Oldenzaal kan ook'],
+];
 ---
 
 <Page
@@ -11,7 +19,10 @@ const wishes = ['Soort werk', 'Uren', 'Vanaf', 'Regio'];
   <div class="container">
     <div class="head">
       <h1>Op zoek naar een team.</h1>
-      <p class="lead">Voorlopige tekst voor werkgevers.</p>
+      <p class="lead">
+        Ik werk hard, wil elke dag bijleren, gebruik AI op een verstandige manier en ken de basis
+        van programmeren.
+      </p>
     </div>
     <div class="sec work">
       <article class="card">
@@ -20,12 +31,10 @@ const wishes = ['Soort werk', 'Uren', 'Vanaf', 'Regio'];
           <span class="chip-ok">Open voor werk</span>
         </div>
         <dl>
-          {wishes.map((w) => (
+          {wishes.map(([k, v]) => (
             <div>
-              <dt>{w}</dt>
-              <dd>
-                <span class="fill">nog invullen</span>
-              </dd>
+              <dt>{k}</dt>
+              <dd>{v}</dd>
             </div>
           ))}
         </dl>

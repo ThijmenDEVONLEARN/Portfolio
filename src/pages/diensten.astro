@@ -1,20 +1,52 @@
 ---
 import Page from '../layouts/Page.astro';
 
-const services = ['Websites', 'Automatiseringen met n8n'];
+const services = [
+  {
+    title: 'Websites',
+    text: 'Een website zoals jij hem wilt, of je bestaande site mooier gemaakt.',
+    items: [
+      'Ontwerp op maat',
+      'Contactformulier dat in je mail binnenkomt',
+      'Een nieuw design voor je site, de betaalpagina blijft zoals hij is',
+      'Onderhoud na de oplevering',
+      'Hulp bij hosting: ik zeg waar en hoe, jij maakt het aan',
+    ],
+    note: "Aan betaalpagina's kom ik niet: die bouw ik niet en die pas ik niet aan, ik verander alleen het design eromheen.",
+  },
+  {
+    title: 'Kleine AI-workflows',
+    text: 'Eenvoudige automatiseringen met AI en n8n die terugkerend werk van je overnemen.',
+    items: ['Kleine, overzichtelijke klussen', 'Eerlijk vooraf of het lukt'],
+    brand: { href: 'https://timeturn.nl', logo: '/images/timeturn.webp', name: 'TimeTurn' },
+    note: 'AI-workflows leer ik nog. Daarom neem ik alleen kleine klussen aan die ik goed kan afmaken.',
+  },
+];
 const steps = [
-  { title: 'Kennismaken', text: 'Voorlopige tekst.' },
+  { title: 'Kennismaken', text: 'We bespreken wat je wilt, via een belletje of een berichtje.' },
   { title: 'Eerlijke offerte', text: 'Geen vaste prijzen, wel een duidelijk voorstel.' },
-  { title: 'Bouwen', text: 'Voorlopige tekst.' },
-  { title: 'Opleveren', text: 'Voorlopige tekst.' },
+  {
+    title: 'Bouwen',
+    text: 'Ik maak de site en laat je tussendoor zien hoe het eruitziet, zodat je kunt bijsturen.',
+  },
+  {
+    title: 'Opleveren',
+    text: 'Als je tevreden bent, krijg je de site in een zip en leg ik uit waar en hoe je hem het beste kunt hosten.',
+  },
 ];
 ---
 
-<Page title="Diensten" description="Websites en n8n-automatiseringen, met een eerlijke offerte.">
+<Page
+  title="Diensten"
+  description="Websites op maat en kleine AI-workflows, met een eerlijke offerte."
+>
   <div class="container">
     <div class="head">
       <h1>Wat ik voor je kan maken.</h1>
-      <p class="lead">Voorlopige tekst over voor wie je werkt.</p>
+      <p class="lead">
+        Voor ondernemers en mensen die een mooie website of een slimme automatisering willen, zonder
+        gedoe.
+      </p>
     </div>
     <div class="sec svc">
       {services.map((s, i) => (
@@ -23,24 +55,33 @@ const steps = [
             <span>Dienst {i + 1}</span>
           </div>
           <div class="entry__body">
-            <h2>{s}</h2>
-            <p>Voorlopige tekst.</p>
+            <h2>{s.title}</h2>
+            <p>{s.text}</p>
             <ul>
-              <li>Voorbeeld van wat je krijgt</li>
-              <li>Voorbeeld</li>
-              <li>Voorbeeld</li>
+              {s.items.map((t) => (
+                <li>{t}</li>
+              ))}
             </ul>
+            {s.brand && (
+              <a class="svc__brand" href={s.brand.href} target="_blank" rel="noopener">
+                <img
+                  src={s.brand.logo}
+                  width="800"
+                  height="224"
+                  alt={s.brand.name}
+                  loading="lazy"
+                />
+                <span>Bekijk {s.brand.name} op timeturn.nl ↗</span>
+              </a>
+            )}
+            <p class="svc__note">
+              <strong>Eerlijk gezegd</strong>
+              {s.note}
+            </p>
           </div>
         </article>
       ))}
     </div>
-    <section class="sec honest">
-      <h2>Eerlijk gezegd</h2>
-      <p>
-        Automatiseringen leer ik mezelf. De basis gaat goed, en ik zeg eerlijk wanneer iets nog
-        buiten mijn kunnen ligt.
-      </p>
-    </section>
     <section class="sec--l">
       <h2 class="sec-head">Zo gaat het</h2>
       <ol class="flow">
