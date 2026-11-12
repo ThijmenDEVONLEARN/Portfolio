@@ -2,9 +2,24 @@
 import Page from '../../layouts/Page.astro';
 
 const levels = [
-  { name: 'Dagelijks', filled: 3, tags: ['HTML', 'CSS', 'JavaScript', 'Git'] },
-  { name: 'Kan ik mee werken', filled: 2, tags: ['Astro', 'Node.js', 'SQL', 'C#'] },
-  { name: 'Aan het leren', filled: 1, tags: ['n8n', 'three.js', 'Python'] },
+  {
+    name: 'Dagelijks',
+    filled: 3,
+    text: 'Hier werk ik elke dag mee.',
+    tags: ['HTML', 'CSS', 'JavaScript', 'Git'],
+  },
+  {
+    name: 'Kan ik mee werken',
+    filled: 2,
+    text: 'Kan ik zelfstandig een opdracht mee doen.',
+    tags: ['Astro', 'Node.js', 'SQL', 'C#'],
+  },
+  {
+    name: 'Aan het leren',
+    filled: 1,
+    text: 'Ben ik nu mee bezig.',
+    tags: ['n8n', 'three.js', 'Python'],
+  },
 ];
 ---
 
@@ -14,18 +29,20 @@ const levels = [
       <h1>Wat ik kan.</h1>
       <p class="lead">Eerlijk ingedeeld in drie niveaus. Geen procenten, want die zeggen niets.</p>
     </div>
-    <ul class="sec levels ruled">
+    <ul class="sec levels">
       {levels.map((l) => (
         <li>
-          <h2>
+          <div class="levels__top">
+            <small>niveau {l.filled} van 3</small>
+            <h2>{l.name}</h2>
             <span class="meter" aria-hidden="true">
               {[1, 2, 3].map((n) => (
                 <b class={n <= l.filled ? 'f' : undefined} />
               ))}
             </span>
-            {l.name}
-          </h2>
-          <ul class="tags">
+            <p>{l.text}</p>
+          </div>
+          <ul>
             {l.tags.map((t) => (
               <li>{t}</li>
             ))}

@@ -161,9 +161,14 @@
   padding-bottom: var(--section-gap-s);
 }
 .head {
-  padding-top: var(--space-3xl);
+  padding-top: var(--space-4xl);
+  padding-bottom: var(--space-xl);
   display: grid;
   gap: var(--space-lg);
+}
+.head .lead {
+  font-size: var(--text-xl);
+  max-width: 40ch;
 }
 .sec {
   margin-top: var(--section-gap-s);
@@ -463,34 +468,84 @@
 }
 
 /* skills */
-.levels > li {
+/* skills: three blocks that step down like a stair, the daily level dark and tallest */
+.levels {
   display: grid;
-  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--gap-columns);
-  padding-block: var(--space-lg);
-  align-items: center;
+  align-items: end;
+  margin-bottom: 0;
+  padding: 0;
+  list-style: none;
+}
+.levels > li {
+  border-radius: 20px;
+  background: var(--color-paper-2);
+  box-shadow: 0 0 0 1px var(--color-rule);
+  overflow: hidden;
+}
+.levels__top {
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-xl) var(--space-xl) var(--space-lg);
+}
+.levels > li:nth-child(1) .levels__top {
+  padding-top: var(--space-3xl);
+}
+.levels > li:nth-child(2) .levels__top {
+  padding-top: var(--space-2xl);
+}
+.levels small {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-muted);
 }
 .levels h2 {
-  font-size: var(--text-title);
+  font-size: var(--text-2xl);
   line-height: 1.2;
   max-width: none;
+}
+.levels p {
+  margin: 0;
+  color: var(--color-muted);
+}
+.levels ul {
+  margin: 0;
+  padding: 0 var(--space-xl) var(--space-lg);
+  list-style: none;
+}
+.levels ul li {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  min-height: 52px;
+  border-top: var(--rule-hair) solid var(--color-rule);
+  font-size: var(--text-lg);
+  font-weight: 500;
+}
+.levels > li:nth-child(1) {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  box-shadow: none;
+}
+.levels > li:nth-child(1) small,
+.levels > li:nth-child(1) p {
+  color: color-mix(in oklch, var(--color-paper) 72%, transparent);
+}
+.levels > li:nth-child(1) ul li {
+  border-color: color-mix(in oklch, var(--color-paper) 22%, transparent);
 }
 .meter {
-  display: inline-flex;
-  gap: var(--space-2xs);
+  display: flex;
+  gap: var(--space-xs);
 }
 .meter b {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  border: 1.5px solid var(--color-ink);
+  flex: 1;
+  height: 14px;
+  border-radius: 7px;
+  border: 1.5px solid currentColor;
 }
 .meter b.f {
   background: var(--color-accent);
-  border-color: var(--color-ink);
 }
 .repos {
   display: grid;
@@ -531,12 +586,23 @@
 /* ervaring: the climb as stops */
 .stops {
   position: relative;
+  border-top: 0;
+}
+/* the climb as one line down the stops */
+.stops::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: var(--space-2xl);
+  bottom: var(--space-2xl);
+  width: 2px;
+  background: var(--color-rule);
 }
 .stops > li {
   display: grid;
-  grid-template-columns: 32px minmax(0, 3fr) minmax(0, 8fr);
+  grid-template-columns: 32px minmax(0, 2fr) minmax(0, 9fr);
   gap: var(--gap-columns);
-  padding-block: var(--space-xl);
+  padding-block: var(--space-2xl);
   align-items: start;
 }
 .stops .shape {
@@ -544,6 +610,7 @@
   height: 18px;
   background: var(--color-ink);
   margin-top: var(--space-xs);
+  position: relative;
 }
 .stops li:nth-child(1) .shape {
   background: var(--color-accent);
@@ -560,6 +627,7 @@
   border-radius: 50%;
 }
 .stops .when {
+  font-size: var(--text-lg);
   font-weight: 500;
   color: var(--color-muted);
   padding-top: var(--space-2xs);
@@ -568,9 +636,13 @@
   color: var(--color-ink);
 }
 .stops h2 {
-  font-size: var(--text-title);
-  line-height: 1.2;
-  margin-bottom: var(--space-xs);
+  font-size: var(--text-section);
+  line-height: 1.05;
+  margin-bottom: var(--space-md);
+}
+.stops p {
+  font-size: var(--text-lead);
+  max-width: 52ch;
 }
 
 /* projecten: an index with the lead row large */
@@ -771,30 +843,29 @@
 /* werk */
 .work {
   display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-  gap: var(--space-3xl);
-  align-items: start;
+  gap: var(--space-2xl);
 }
 .work dl {
   margin: 0;
 }
 .work dl > div {
   display: grid;
-  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 9fr);
   gap: var(--space-md);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-lg) var(--space-xl);
   border-bottom: var(--rule-hair) solid var(--color-rule);
 }
 .work dl > div:last-child {
   border-bottom: 0;
 }
 .work dt {
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   font-weight: 500;
   color: var(--color-muted);
 }
 .work dd {
   margin: 0;
+  font-size: var(--text-xl);
   font-weight: 500;
 }
 .fill {
@@ -806,19 +877,21 @@
 }
 .see {
   display: grid;
-  gap: var(--space-sm);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gap-columns);
 }
 .see a {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  min-height: 72px;
-  padding: 0 var(--space-lg);
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  min-height: 140px;
+  padding: var(--space-lg);
   border-radius: var(--radius-card);
   background: var(--color-paper-2);
   box-shadow: 0 0 0 1px var(--color-rule);
   text-decoration: none;
-  font: var(--display-weight) var(--text-xl)/1 var(--font-display);
+  font: var(--display-weight) var(--text-2xl)/1 var(--font-display);
   letter-spacing: var(--tracking-display);
 }
 .see a:hover {
@@ -1023,7 +1096,8 @@ footer .legal {
 @media (max-width: 60rem) {
   .about,
   .values > li,
-  .levels > li,
+  .levels,
+  .see,
   .index > li,
   .index > li:first-child,
   .index > li:not(:first-child),
@@ -1056,6 +1130,9 @@ footer .legal {
   }
   .stops > li > div {
     grid-column: 2;
+  }
+  .levels > li .levels__top {
+    padding-top: var(--space-xl);
   }
   footer .legal {
     justify-self: start;
