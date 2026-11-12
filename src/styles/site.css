@@ -1032,6 +1032,10 @@ legend {
   opacity: 0.55;
   cursor: not-allowed;
 }
+.hp {
+  position: absolute;
+  left: -9999px;
+}
 .help {
   min-height: 1lh;
   font-size: var(--text-sm);
