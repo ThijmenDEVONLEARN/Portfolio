@@ -8,3 +8,5 @@ dist/
 previews/
 *.blend
 *.blend1
+.dev.vars
+.wrangler/
