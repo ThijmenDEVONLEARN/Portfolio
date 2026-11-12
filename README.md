@@ -78,7 +78,7 @@ The site runs at http://localhost:4321.
    node scripts/build-climb.mjs
    ```
 
-   The frame numbers in `scripts/build-climb.mjs` and `src/scripts/frames.js` must match. The short clips in `public/berg/<l|p>/clips` and `scripts/build-clips.mjs` belong to the earlier stop-to-stop player and are no longer used.
+   The frame numbers in `scripts/build-climb.mjs` and `src/scripts/frames.js` must match.
 
 ## Project structure
 
