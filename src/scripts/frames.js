@@ -305,7 +305,7 @@ if (!reduce) {
 
 build();
 
-// A notice before the climb, with a count of three seconds in which scrolling waits. It tells the
+// A notice before the climb, with a count of two seconds in which scrolling waits. It tells the
 // visitor what to do, and the videos use the time to load and warm up.
 const gate = document.getElementById('gate');
 if (gate && !reduce && scrollY < 2) {
@@ -316,7 +316,7 @@ if (gate && !reduce && scrollY < 2) {
   const opts = { passive: false, capture: true };
   kinds.forEach((k) => addEventListener(k, hold, opts));
   gate.classList.add('on');
-  let s = 3;
+  let s = 2;
   const id = setInterval(() => {
     if (--s) return (count.textContent = s);
     clearInterval(id);
