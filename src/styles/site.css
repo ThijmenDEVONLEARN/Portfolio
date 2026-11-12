@@ -466,6 +466,12 @@
 .values h3 {
   font-size: var(--text-3xl);
 }
+.values p {
+  font-size: var(--text-lg);
+  line-height: 1.6;
+  color: var(--color-ink);
+  max-width: 48ch;
+}
 
 /* skills */
 /* skills: three blocks that step down like a stair, the daily level dark and tallest */
