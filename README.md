@@ -1,6 +1,6 @@
 # Portfolio
 
-Personal portfolio website, built with [Astro](https://astro.build) and [three.js](https://threejs.org).
+Personal portfolio website, built with [Astro](https://astro.build).
 
 The landing page is a climb up a 3D mountain. The scene is built and rendered in Blender (`blender/climb.py`) to 120 stills per orientation, doubled to 239 with frame interpolation, which the home page plays as you scroll. Scrolling is free: the climb video follows the scroll position, and the sharp still of a stop shows when it rests on one. At the top, one more scroll takes you into the page. This keeps the climb smooth on any device, without running WebGL on the home page.
 
@@ -17,13 +17,11 @@ The inner pages share one light design: ice-blue paper, slate ink and a coral ac
 | `/diensten/`          | Services: websites and n8n   |
 | `/werk/`              | Open for work                |
 | `/contact/`           | Contact form (not wired yet) |
-| `/berg-3d/`           | The live 3D scene (unlisted) |
 
 ## Tech stack
 
 - Astro (static output)
-- three.js for the 3D scene the landing frames are rendered from
-- Playwright to render those frames
+- Blender (`blender/climb.py`) renders the landing frames; RIFE and ffmpeg turn them into the climb videos
 - Prettier for formatting
 - GitHub Actions for CI
 
@@ -85,13 +83,13 @@ The site runs at http://localhost:4321.
 ```
 src/
   components/  Contour map hero, About intro, footer
-  data/        Page order for the menu and next links
+  data/        Page order for the next links
   layouts/     Base document and the inner page layout
   pages/       One file per route
-  scripts/     Client-side scripts (3D scene, frame player, contour map)
+  scripts/     Client-side scripts (frame player, contour map)
   styles/      Landing styles, design tokens and inner page styles
 public/        Static files served as-is (images, landing frames, favicon)
-scripts/       Render script for the landing frames
+scripts/       Scripts that build the landing frames and videos
 ```
 
 ## License

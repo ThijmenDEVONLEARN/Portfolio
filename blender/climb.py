@@ -579,7 +579,7 @@ def detail_modifier(ob, rock, tuft):
 
 
 def path_xy():
-    """The spiral from the valley to the summit, same shape as the 3D scene in mountain.js."""
+    """The spiral from the valley to the summit, same shape as the earlier three.js scene."""
     t = np.linspace(0, 1, 2400)
     a = -2.55 + t * 3.4
     rad = 7.2 * (1 - t) ** 1.1 + 0.05
@@ -673,7 +673,7 @@ def build_path(pts):
 
 
 def camera_at(k, portrait):
-    """Same orbit as mountain.js: swing round the peak while rising, from dawn to morning."""
+    """Same orbit as the earlier three.js scene: swing round the peak while rising, from dawn to morning."""
     ca = -2.3 + k * 3.4
     cd = (15 - k * 3.5) * (1.45 if portrait else 1)
     pos = Vector((PEAK.x + math.cos(ca) * cd, PEAK.y - math.sin(ca) * cd, 6.4 + k * 3.6 + (2.5 if portrait else 0)))
