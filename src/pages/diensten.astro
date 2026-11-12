@@ -1,7 +1,24 @@
 ---
 import Page from '../layouts/Page.astro';
 
-const services = ['Websites', 'Automatiseringen met n8n'];
+const services = [
+  {
+    title: 'Websites',
+    text: 'Een website zoals jij hem wilt, of je bestaande site mooier gemaakt.',
+    items: [
+      'Ontwerp op maat',
+      'Contactformulier dat in je mail binnenkomt',
+      'Je bestaande betaalpagina netjes ingebouwd',
+      'Onderhoud na de oplevering',
+      'Hulp bij hosting: ik zeg waar en hoe, jij maakt het aan',
+    ],
+  },
+  {
+    title: 'Kleine AI-workflows',
+    text: 'Eenvoudige automatiseringen met AI en n8n die terugkerend werk van je overnemen.',
+    items: ['Kleine, overzichtelijke klussen', 'Eerlijk vooraf of het lukt'],
+  },
+];
 const steps = [
   { title: 'Kennismaken', text: 'Voorlopige tekst.' },
   { title: 'Eerlijke offerte', text: 'Geen vaste prijzen, wel een duidelijk voorstel.' },
@@ -10,7 +27,10 @@ const steps = [
 ];
 ---
 
-<Page title="Diensten" description="Websites en n8n-automatiseringen, met een eerlijke offerte.">
+<Page
+  title="Diensten"
+  description="Websites op maat en kleine AI-workflows, met een eerlijke offerte."
+>
   <div class="container">
     <div class="head">
       <h1>Wat ik voor je kan maken.</h1>
@@ -23,12 +43,12 @@ const steps = [
             <span>Dienst {i + 1}</span>
           </div>
           <div class="entry__body">
-            <h2>{s}</h2>
-            <p>Voorlopige tekst.</p>
+            <h2>{s.title}</h2>
+            <p>{s.text}</p>
             <ul>
-              <li>Voorbeeld van wat je krijgt</li>
-              <li>Voorbeeld</li>
-              <li>Voorbeeld</li>
+              {s.items.map((t) => (
+                <li>{t}</li>
+              ))}
             </ul>
           </div>
         </article>
@@ -37,8 +57,8 @@ const steps = [
     <section class="sec honest">
       <h2>Eerlijk gezegd</h2>
       <p>
-        Automatiseringen leer ik mezelf. De basis gaat goed, en ik zeg eerlijk wanneer iets nog
-        buiten mijn kunnen ligt.
+        AI-workflows leer ik nog. Daarom neem ik alleen kleine klussen aan die ik goed kan afmaken.
+        Een eigen betaalsysteem bouw ik niet, wel bouw ik je bestaande betaalpagina in.
       </p>
     </section>
     <section class="sec--l">
