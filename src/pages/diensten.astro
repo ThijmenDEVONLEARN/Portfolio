@@ -20,10 +20,16 @@ const services = [
   },
 ];
 const steps = [
-  { title: 'Kennismaken', text: 'Voorlopige tekst.' },
+  { title: 'Kennismaken', text: 'We bespreken wat je wilt, via een belletje of een berichtje.' },
   { title: 'Eerlijke offerte', text: 'Geen vaste prijzen, wel een duidelijk voorstel.' },
-  { title: 'Bouwen', text: 'Voorlopige tekst.' },
-  { title: 'Opleveren', text: 'Voorlopige tekst.' },
+  {
+    title: 'Bouwen',
+    text: 'Ik maak de site en laat je tussendoor zien hoe het eruitziet, zodat je kunt bijsturen.',
+  },
+  {
+    title: 'Opleveren',
+    text: 'Als je tevreden bent, krijg je de site in een zip en leg ik uit waar en hoe je hem het beste kunt hosten.',
+  },
 ];
 ---
 
@@ -34,7 +40,10 @@ const steps = [
   <div class="container">
     <div class="head">
       <h1>Wat ik voor je kan maken.</h1>
-      <p class="lead">Voorlopige tekst over voor wie je werkt.</p>
+      <p class="lead">
+        Voor ondernemers en mensen die een mooie website of een slimme automatisering willen, zonder
+        gedoe.
+      </p>
     </div>
     <div class="sec svc">
       {services.map((s, i) => (
