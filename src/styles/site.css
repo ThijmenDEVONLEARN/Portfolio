@@ -1188,6 +1188,11 @@ footer .legal {
 }
 
 /* Carousel met schermafbeeldingen */
+@media (min-width: 60.01rem) {
+  .index > li:has(.carousel) {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  }
+}
 .carousel {
   display: grid;
   gap: var(--space-sm);
@@ -1198,7 +1203,7 @@ footer .legal {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 2 / 1;
   max-width: 100%;
   border-radius: var(--radius-card);
   box-shadow: 0 0 0 1px var(--color-ink);
