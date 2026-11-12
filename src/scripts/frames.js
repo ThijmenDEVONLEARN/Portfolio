@@ -174,6 +174,14 @@ function build() {
     seq.append(img);
     return img;
   });
+  // the nearest still is up as soon as it is decoded; scrolling works once the forward video can seek
+  let near = 0;
+  AT.forEach((a, i) => Math.abs(a - f0) < Math.abs(AT[near] - f0) && (near = i));
+  stills[near].decode().then(
+    () => restStill(AT[near]),
+    () => {},
+  );
+  if (reduce) return; // stills only: no videos are created or downloaded
   [fwd, rev] = ['climb', 'climb-rev'].map((name) => {
     const v = document.createElement('video');
     v.muted = true;
@@ -188,14 +196,6 @@ function build() {
   // then at once, so that it is loaded and warm before the first scroll rather than during it
   fwd.addEventListener('canplaythrough', loadRev, { once: true });
   active = fwd;
-  // the nearest still is up as soon as it is decoded; scrolling works once the forward video can seek
-  let near = 0;
-  AT.forEach((a, i) => Math.abs(a - f0) < Math.abs(AT[near] - f0) && (near = i));
-  stills[near].decode().then(
-    () => restStill(AT[near]),
-    () => {},
-  );
-  if (reduce) return;
   fwd.addEventListener(
     'loadeddata',
     () => {
@@ -242,7 +242,7 @@ const fresh = (t) => t - reached > 500; // not the same push that brought us her
 addEventListener(
   'scroll',
   () => {
-    if (unlocked) return void (scrollY < endY() - 30 && (unlocked = false));
+    if (reduce || unlocked) return void (scrollY < endY() - 30 && (unlocked = false));
     if (scrollY > endY()) scrollTo(0, endY());
     if (atEnd() && !reached) reached = performance.now();
     if (!atEnd()) reached = 0;
@@ -276,6 +276,8 @@ addEventListener('keydown', (e) => {
   if (atEnd() && fresh(performance.now()) && ['ArrowDown', 'PageDown', 'End', ' '].includes(e.key))
     unlocked = true;
 });
+// tabbing into the content below the climb must not be pushed back to the wall
+addEventListener('focusin', (e) => !track.contains(e.target) && (unlocked = true));
 
 // a slight shift with the pointer or the tilt of the phone, so the still scene feels like a place
 if (!reduce) {
