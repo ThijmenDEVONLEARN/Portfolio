@@ -12,11 +12,13 @@ const services = [
       'Onderhoud na de oplevering',
       'Hulp bij hosting: ik zeg waar en hoe, jij maakt het aan',
     ],
+    note: "Aan betaalpagina's kom ik niet: die bouw ik niet en die pas ik niet aan, ik verander alleen het design eromheen.",
   },
   {
     title: 'Kleine AI-workflows',
     text: 'Eenvoudige automatiseringen met AI en n8n die terugkerend werk van je overnemen.',
     items: ['Kleine, overzichtelijke klussen', 'Eerlijk vooraf of het lukt'],
+    note: 'AI-workflows leer ik nog. Daarom neem ik alleen kleine klussen aan die ik goed kan afmaken.',
   },
 ];
 const steps = [
@@ -59,18 +61,14 @@ const steps = [
                 <li>{t}</li>
               ))}
             </ul>
+            <p class="svc__note">
+              <strong>Eerlijk gezegd</strong>
+              {s.note}
+            </p>
           </div>
         </article>
       ))}
     </div>
-    <section class="sec honest">
-      <h2>Eerlijk gezegd</h2>
-      <p>
-        AI-workflows leer ik nog. Daarom neem ik alleen kleine klussen aan die ik goed kan afmaken.
-        Aan betaalpagina's kom ik niet: die bouw ik niet en die pas ik niet aan, ik verander alleen
-        het design eromheen.
-      </p>
-    </section>
     <section class="sec--l">
       <h2 class="sec-head">Zo gaat het</h2>
       <ol class="flow">
