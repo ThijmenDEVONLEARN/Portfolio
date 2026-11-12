@@ -6,17 +6,17 @@ The landing page is a climb up a 3D mountain. The scene is built and rendered in
 
 The inner pages share one light design: ice-blue paper, slate ink and a coral accent. The About page opens on a contour map of the climb so far, drawn on a canvas, with a stop for each step.
 
-| Route                 | Page                         |
-| --------------------- | ---------------------------- |
-| `/`                   | Mountain landing (stills)    |
-| `/over-mij/`          | About, with the contour map  |
-| `/over-mij/skills/`   | Skills in three levels       |
-| `/over-mij/ervaring/` | Education and experience     |
-| `/projecten/`         | Projects, linking to GitHub  |
-| `/ai/`                | How I work with AI           |
-| `/diensten/`          | Services: websites and n8n   |
-| `/werk/`              | Open for work                |
-| `/contact/`           | Contact form (not wired yet) |
+| Route                 | Page                        |
+| --------------------- | --------------------------- |
+| `/`                   | Mountain landing (stills)   |
+| `/over-mij/`          | About, with the contour map |
+| `/over-mij/skills/`   | Skills in three levels      |
+| `/over-mij/ervaring/` | Education and experience    |
+| `/projecten/`         | Projects, linking to GitHub |
+| `/ai/`                | How I work with AI          |
+| `/diensten/`          | Services: websites and n8n  |
+| `/werk/`              | Open for work               |
+| `/contact/`           | Contact form                |
 
 ## Tech stack
 
@@ -24,6 +24,7 @@ The inner pages share one light design: ice-blue paper, slate ink and a coral ac
 - Blender (`blender/climb.py`) renders the landing frames; RIFE and ffmpeg turn them into the climb videos
 - Prettier for formatting
 - GitHub Actions for CI
+- Cloudflare Workers for hosting: static files plus a small worker for the contact form
 
 ## Getting started
 
@@ -95,3 +96,16 @@ scripts/       Scripts that build the landing frames and videos
 ## License
 
 [MIT](LICENSE)
+
+## Deploying
+
+The site runs on Cloudflare Workers (`wrangler.jsonc`): the build in `dist/` is served as static files, and `worker/index.js` handles `POST /api/contact`. Build command `npm run build`, deploy command `npx wrangler deploy`.
+
+The contact form needs, in the Cloudflare dashboard:
+
+- a Turnstile widget for the domain: its site key as the build variable `PUBLIC_TURNSTILE_SITEKEY`, its secret key as the Worker secret `TURNSTILE_SECRET`
+- Email Routing on the domain, with the inbox that should get the messages as a verified destination address, and that address as the Worker secret `CONTACT_TO`
+
+To try the worker locally, copy `.dev.vars.example` to `.dev.vars`, then `npm run build` and `npx wrangler dev`. `npm test` runs the worker's tests.
+
+Security headers and cache rules are in `public/_headers`.
