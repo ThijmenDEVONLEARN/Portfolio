@@ -1,0 +1,44 @@
+---
+// The live 3D climb. The home page plays stills rendered from this page (scripts/render-frames.mjs).
+import Base from '../layouts/Base.astro';
+import '../styles/landing.css';
+---
+
+<Base title="Thijmen | de berg in 3D">
+  <Fragment slot="head">
+    <meta name="robots" content="noindex" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
+    />
+  </Fragment>
+  <div class="track" id="track">
+    <div class="stage">
+      <canvas id="gl" aria-hidden="true"></canvas>
+      <div class="fallback" aria-hidden="true">
+        <svg viewBox="0 0 800 400" preserveAspectRatio="xMidYMax slice">
+          <path
+            d="M0 400 L0 300 L180 250 L330 120 L420 60 L520 140 L640 110 L800 220 L800 400Z"
+            fill="#2b3a28"
+          />
+          <path d="M380 95 L420 60 L465 100 L440 96 L420 110 L400 96Z" fill="#eef2f5" />
+        </svg>
+      </div>
+      <div class="shade"></div>
+      <div class="copy">
+        <h1>
+          Thijmen<span>.</span>
+        </h1>
+        <div class="sub" id="sub"></div>
+      </div>
+      <div class="steps" id="dots" aria-hidden="true"></div>
+      <div class="hint" id="hint">
+        scroll om te klimmen ↓
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import '../scripts/mountain.js';
+  </script>
+</Base>
