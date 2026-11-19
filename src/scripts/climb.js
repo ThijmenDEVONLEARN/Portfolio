@@ -1,5 +1,7 @@
-// The stops on the climb and the text beside them, shared by the frame player and the live 3D scene.
-export const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// The stops on the climb and the text beside them, used by the frame player.
+// reduced motion, or the browser asks to save data: stills only, no videos
+export const reduce =
+  matchMedia('(prefers-reduced-motion: reduce)').matches || navigator.connection?.saveData === true;
 export const root = document.documentElement;
 export const steps = [
   { t: '', s: 'Ik bouw websites en automatiseringen. Scroll en klim mee.' },
@@ -47,12 +49,6 @@ steps.slice(1).forEach((s) => {
 });
 const dots = [...dotsEl.children];
 let lastStep = -1;
-let onStep = () => {};
-// lets the 3D scene grow the marker of the stop you are at
-export const setOnStep = (f) => {
-  onStep = f;
-};
-export const currentStep = () => lastStep;
 export const setStep = (i) => {
   if (i === lastStep) return;
   lastStep = i;
@@ -68,15 +64,11 @@ export const setStep = (i) => {
     d.classList.toggle('on', j < i);
     d.classList.toggle('now', j === i - 1);
   });
-  onStep(i);
 };
 
 export function prog() {
   const t = document.getElementById('track');
   const m = t.offsetHeight - innerHeight;
   return m > 0 ? Math.min(1, Math.max(0, scrollY / m)) : 0;
-}
-export function stepAt(k) {
-  return k < 0.06 ? 0 : Math.min(5, 1 + Math.floor(((k - 0.06) / 0.94) * 5 * 0.999));
 }
 setStep(0);

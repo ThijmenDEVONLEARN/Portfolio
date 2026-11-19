@@ -6,7 +6,7 @@ const projects = [
   {
     title: 'Doelen-ideeën-canvas',
     live: true,
-    text: 'Voorlopige tekst: wat het doet en voor wie.',
+    text: 'Voor mensen met veel ideeën die ze moeilijk voor zich zien. Je maakt een hoofdidee en bouwt daaruit stappen: waar begin ik, hoe ziet het einddoel eruit en wat doe ik wanneer.',
     tags: ['Node.js', 'JavaScript'],
     repo: 'https://github.com/ThijmenDEVONLEARN/Doelen-ideen-canvas',
     slot: 'canvas',
@@ -16,29 +16,79 @@ const projects = [
   {
     title: 'Persoonlijk dashboard',
     live: false,
-    text: 'Voorlopige tekst.',
-    tags: [],
+    text: 'Eén rustige plek voor mijn agenda, taken, notities en geld, met een AI-assistent die meedenkt. Het voegt Google, Outlook en iCloud samen in één overzicht en draait op mijn eigen server. Claude schreef de code, ik bepaalde wat de app moest doen, hoe het eruitziet en wat veilig genoeg is.',
+    tags: ['Node.js', 'TypeScript', 'PostgreSQL', 'React', 'Tauri'],
     repo: '',
     slot: 'dashboard',
     alt: 'Screenshot van het persoonlijk dashboard',
-  },
-  {
-    title: 'Verkoopbot',
-    live: false,
-    text: 'Voorlopige tekst.',
-    tags: [],
-    repo: '',
-    slot: 'bot',
-    alt: 'Screenshot van de verkoopbot',
+    note: 'De schermafbeeldingen tonen testdata, geen echte gegevens.',
+    gallery: [
+      [
+        'vandaag',
+        'Vandaag: overzicht van de dag',
+        'De startpagina. Je ziet in één keer wat nu moet, de taken en afspraken van vandaag, hoeveel geld je vandaag nog kunt uitgeven, je gewoontes en de ochtendroutine.',
+      ],
+      [
+        'taken',
+        'Taken',
+        'Alle taken, gegroepeerd in vandaag, morgen en later. Elke taak heeft een datum en een geschatte duur, en je kunt wisselen tussen dag, week, maand en jaar.',
+      ],
+      [
+        'planning',
+        'Planning: weekagenda',
+        'Een weekagenda waarin afspraken uit Google, Outlook en iCloud samenkomen met je taken. Onderaan zie je wat de AI-assistent heeft gedaan.',
+      ],
+      [
+        'routines',
+        'Routines',
+        'Gewoontes met een raster van de laatste twaalf weken, een teller voor dagen op rij en een doel met voortgang, zoals een boek uitlezen.',
+      ],
+      [
+        'notities',
+        'Notities: editor',
+        'Een notitie-editor met mappen. Je schrijft in Markdown en ziet het resultaat ernaast, met afvinklijstjes en links tussen notities en taken.',
+      ],
+      [
+        'notities-kaart',
+        'Notities: kaart',
+        'Dezelfde notities als kaart. Je sleept mappen en notities op een werkblad, zodat je ziet wat bij elkaar hoort.',
+      ],
+      [
+        'financien',
+        'Financiën: overzicht',
+        'Het geldoverzicht: hoeveel je vandaag nog vrij kunt uitgeven, je vaste lasten per maand en per jaar, en spaardoelen met een streefdatum.',
+      ],
+      [
+        'rekeningen',
+        'Financiën: rekeningen',
+        'Je rekeningen met saldo, vaste lasten en transacties. Het dashboard kan alleen lezen en kan nooit zelf geld overmaken.',
+      ],
+      [
+        'beveiliging',
+        'Beveiliging',
+        'Een overzicht van de eigen server waar het dashboard op draait: containers, inlogpogingen, updates, back-ups en een checklist om de server veilig te houden.',
+      ],
+      [
+        'gebruikers',
+        'Gebruikers',
+        'Wie toegang heeft. Je kunt iemand uitnodigen met een code, zonder code kan niemand een account maken.',
+      ],
+      [
+        'vormgeving',
+        'Vormgeving',
+        'Instellingen voor het uiterlijk: kies een stijl zoals Licht, Nacht of Klei, stel minder beweging in en bepaal welke schermen in het menu staan.',
+      ],
+    ],
   },
   {
     title: 'Claude-brein',
     live: true,
-    text: 'Voorlopige tekst.',
-    tags: [],
-    repo: '',
+    text: 'Een eigen geheugen voor Claude, op mijn eigen schijf. Claude onthoudt niets na een gesprek, en een map vol notities doorlezen kost veel. Mijn server geeft Claude eerst alleen korte samenvattingen en laat hem pas lezen wat hij echt nodig heeft. Zoeken blijft rond de 30 ms, gemeten op 300.000 notities, en alles is te bekijken als een heelal in de browser.',
+    tags: ['TypeScript', 'Fastify', 'SQLite', 'MCP'],
+    repo: 'https://github.com/ThijmenDEVONLEARN/claude-brain-open',
     slot: 'brein',
-    alt: 'Screenshot van het Claude-brein',
+    alt: 'Het Claude-brein: notitiegroepen als sterrenstelsels in een heelal, met lijnen tussen verwante groepen',
+    img: '/images/brein.webp',
   },
 ];
 ---
@@ -67,20 +117,126 @@ const projects = [
             )}
             {p.repo && <a href={p.repo}>Code op GitHub</a>}
           </div>
-          <figure class="shot" data-slot={p.slot} data-alt={p.alt}>
-            {p.img && (
-              <img
-                src={p.img}
-                width="1440"
-                height="900"
-                alt={p.alt}
-                loading={i === 0 ? 'eager' : 'lazy'}
-                decoding="async"
-              />
-            )}
-          </figure>
+          {p.gallery ? (
+            <figure class="carousel" aria-roledescription="carousel" aria-label={p.title}>
+              <div class="carousel__track" tabindex="0">
+                {p.gallery.map(([file, label, info], n) => (
+                  <img
+                    src={`/images/dashboard/${file}.webp`}
+                    alt={`${label} (testdata)`}
+                    data-label={label}
+                    data-info={info}
+                    loading={n === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
+                  />
+                ))}
+              </div>
+              <figcaption>
+                <button type="button" data-dir="-1" aria-label="Vorige foto">
+                  ←
+                </button>
+                <span aria-live="polite">
+                  <b>1 / {p.gallery.length}</b> {p.gallery[0][1]}
+                </span>
+                <button type="button" data-dir="1" aria-label="Volgende foto">
+                  →
+                </button>
+                <small>{p.note}</small>
+              </figcaption>
+            </figure>
+          ) : (
+            <figure class="shot" data-slot={p.slot} data-alt={p.alt}>
+              {p.img && (
+                <img
+                  src={p.img}
+                  width="1440"
+                  height="900"
+                  alt={p.alt}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  decoding="async"
+                />
+              )}
+            </figure>
+          )}
         </li>
       ))}
     </ol>
+    <dialog class="zoom" id="zoom" aria-label="Foto in het groot">
+      <img alt="" />
+      <div class="zoom__info">
+        <strong></strong>
+        <p></p>
+        <small></small>
+      </div>
+      <button type="button" data-step="-1" aria-label="Vorige foto">
+        ←
+      </button>
+      <button type="button" data-step="1" aria-label="Volgende foto">
+        →
+      </button>
+      <button type="button" class="zoom__close" aria-label="Sluiten">
+        ✕
+      </button>
+    </dialog>
   </div>
 </Page>
+
+<script>
+  for (const c of document.querySelectorAll('.carousel')) {
+    const track = c.querySelector('.carousel__track');
+    const imgs = [...track.children];
+    const out = c.querySelector('[aria-live]');
+    let i = 0;
+    let target = null; // skip scroll updates while a button-scroll is underway
+    const label = (n) =>
+      (out.innerHTML = `<b>${n + 1} / ${imgs.length}</b> ${imgs[n].dataset.label}`);
+    const show = (n) => {
+      i = target = (n + imgs.length) % imgs.length;
+      label(i);
+      track.scrollTo({ left: imgs[i].offsetLeft - track.offsetLeft, behavior: 'smooth' });
+    };
+    c.querySelectorAll('button').forEach(
+      (b) => (b.onclick = () => show(i + Number(b.dataset.dir))),
+    );
+    track.addEventListener('scroll', () => {
+      const cur = Math.round(track.scrollLeft / track.clientWidth);
+      if (target !== null && cur !== target) return;
+      target = null;
+      if (cur !== i) label((i = cur));
+    });
+  }
+
+  // Click a screenshot to see it large; arrows step through its carousel.
+  const zoom = document.getElementById('zoom') as HTMLDialogElement;
+  const big = zoom.querySelector('img')!;
+  const [head, cap, note] = ['strong', 'p', 'small'].map((t) => zoom.querySelector(t)!);
+  let set: HTMLImageElement[] = [];
+  let at = 0;
+  const open = (n: number) => {
+    at = (n + set.length) % set.length;
+    big.src = set[at].src;
+    big.alt = set[at].alt;
+    const { label, info } = set[at].dataset;
+    head.textContent = set.length > 1 ? `${at + 1} / ${set.length}  ${label}` : '';
+    cap.textContent = info ?? set[at].alt;
+    note.textContent = set.length > 1 ? 'Testdata, geen echte gegevens.' : '';
+    zoom.toggleAttribute('data-single', set.length < 2);
+    if (!zoom.open) zoom.showModal();
+  };
+  document.querySelectorAll<HTMLImageElement>('.carousel img, .shot img').forEach((img) => {
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', () => {
+      set = [...(img.parentElement!.querySelectorAll('img') as NodeListOf<HTMLImageElement>)];
+      open(set.indexOf(img));
+    });
+  });
+  zoom
+    .querySelectorAll<HTMLButtonElement>('[data-step]')
+    .forEach((b) => b.addEventListener('click', () => open(at + Number(b.dataset.step))));
+  zoom.querySelector('.zoom__close')!.addEventListener('click', () => zoom.close());
+  zoom.addEventListener('click', (e) => e.target === zoom && zoom.close());
+  zoom.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' && set.length > 1) open(at - 1);
+    if (e.key === 'ArrowRight' && set.length > 1) open(at + 1);
+  });
+</script>

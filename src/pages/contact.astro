@@ -7,6 +7,8 @@ const topics = [
   ['werk', 'Werk'],
   ['anders', 'Iets anders'],
 ];
+// Cloudflare's test key, which always passes; the real site key comes from the build variable
+const sitekey = import.meta.env.PUBLIC_TURNSTILE_SITEKEY ?? '1x00000000000000000000AA';
 ---
 
 <Page
@@ -16,11 +18,11 @@ const topics = [
   <div class="container">
     <div class="head">
       <h1>Wat gaan we bouwen?</h1>
-      <p class="lead">Stuur een bericht. Ik reageer meestal binnen een paar dagen.</p>
+      <p class="lead">Stuur een bericht. Ik reageer binnen een dag.</p>
     </div>
     <div class="sec ct">
-      <!-- data-endpoint stays empty until the form is wired to a mail service with Turnstile -->
-      <form id="form" data-endpoint="" novalidate>
+      <!-- posts to worker/index.js, which checks Turnstile and mails the message -->
+      <form id="form" data-endpoint="/api/contact" novalidate>
         <fieldset>
           <legend>Waar gaat het over?</legend>
           <div class="chips">
@@ -44,12 +46,25 @@ const topics = [
           <label for="bericht">Bericht</label>
           <textarea id="bericht" name="bericht" required></textarea>
         </div>
+        <!-- people never see this field; bots fill it in and are dropped by the worker -->
+        <div class="hp" aria-hidden="true">
+          <label for="website">Website</label>
+          <input id="website" name="website" tabindex="-1" autocomplete="off" />
+        </div>
+        <div
+          class="cf-turnstile"
+          data-sitekey={sitekey}
+          data-theme="light"
+          data-language="nl"
+          data-appearance="interaction-only"
+        ></div>
         <div class="actions">
           <button class="btn btn--primary" type="submit">
             Verstuur bericht
           </button>
         </div>
         <p class="help" id="sent" aria-live="polite"></p>
+        <p class="help">Ik gebruik je naam en e-mailadres alleen om op je bericht te reageren.</p>
       </form>
       <ul class="side">
         <li>
@@ -58,20 +73,16 @@ const topics = [
           </a>
         </li>
         <li>
-          <div>
-            LinkedIn <small>link volgt</small>
-          </div>
-        </li>
-        <li>
-          <div>
-            Spambeveiliging <small>Cloudflare Turnstile</small>
-          </div>
+          <a href="https://www.linkedin.com/in/thijmen-vollenbroek-a115603b2">
+            LinkedIn <small>Thijmen Vollenbroek</small>
+          </a>
         </li>
       </ul>
     </div>
   </div>
 </Page>
 
+<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <script>
   const form = document.getElementById('form') as HTMLFormElement;
   const help = document.getElementById('sent')!;
@@ -89,17 +100,24 @@ const topics = [
       bad[0].focus();
       return;
     }
-    if (!form.dataset.endpoint) {
-      help.textContent = 'Er is niets verstuurd: dit formulier is nog niet gekoppeld.';
-      return;
-    }
+    const button = form.querySelector('button')!;
+    button.disabled = true;
+    help.textContent = 'Bezig met versturen…';
     try {
-      const r = await fetch(form.dataset.endpoint, { method: 'POST', body: new FormData(form) });
+      const r = await fetch(form.dataset.endpoint!, { method: 'POST', body: new FormData(form) });
       help.textContent = r.ok
-        ? 'Bericht verstuurd. Ik reageer binnen een paar dagen.'
-        : 'Dat ging niet goed. Probeer het zo nog eens.';
+        ? 'Bericht verstuurd. Ik reageer binnen een dag.'
+        : r.status === 429
+          ? 'Je hebt net al een paar berichten gestuurd. Probeer het over een minuut nog eens.'
+          : r.status === 403
+            ? 'De spamcontrole lukte niet. Laad de pagina opnieuw en probeer het nog eens.'
+            : 'Dat ging niet goed. Probeer het zo nog eens.';
+      if (r.ok) form.reset();
     } catch {
       help.textContent = 'Dat ging niet goed. Probeer het zo nog eens.';
     }
+    button.disabled = false;
+    // a Turnstile token works once, so every try gets a fresh one
+    (window as any).turnstile?.reset();
   });
 </script>

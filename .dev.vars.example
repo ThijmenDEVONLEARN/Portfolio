@@ -1,0 +1,3 @@
+# Copy to .dev.vars for `npx wrangler dev`. These are Cloudflare's test values; real ones go in the dashboard.
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA
+CONTACT_TO=you@example.com

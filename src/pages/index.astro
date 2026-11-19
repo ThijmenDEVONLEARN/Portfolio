@@ -7,31 +7,18 @@ import '../styles/landing.css';
 
 <Base title="Thijmen | websites en automatiseringen">
   <Fragment slot="head">
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Red+Hat+Display:wght@600&family=Red+Hat+Text:wght@400;500&family=Red+Hat+Mono:wght@400;500&display=swap"
-    />
     <script is:inline>
       document.documentElement.classList.add('js');
     </script>
   </Fragment>
   <div class="track" id="track">
-    <!-- scroll stops: the climb progress where each stop on the path is in view, on whole frames (see frames.js) -->
-    <div class="snaps" aria-hidden="true">
-      <i style="--k:0"></i>
-      <i style="--k:0.0924"></i>
-      <i style="--k:0.2773"></i>
-      <i style="--k:0.4622"></i>
-      <i style="--k:0.6555"></i>
-      <i style="--k:1"></i>
-    </div>
     <div class="stage">
-      <!-- still of the first frame, shown until the frames are in -->
+      <!-- still of the first frame, shown until the scene is in -->
       <picture class="poster" aria-hidden="true">
         <source media="(orientation: portrait)" srcset="/images/berg-port.webp" />
         <img src="/images/berg-land.webp" alt="" fetchpriority="high" />
       </picture>
-      <canvas id="seq" aria-hidden="true"></canvas>
+      <div id="seq" aria-hidden="true"></div>
       <div class="shade"></div>
       <nav aria-label="Hoofdmenu">
         <a class="nm" href="/">
@@ -60,6 +47,22 @@ import '../styles/landing.css';
       <div class="steps" id="dots" aria-hidden="true"></div>
       <div class="hint" id="hint">
         scroll om te klimmen ↓
+      </div>
+      <div class="gate" id="gate" role="status">
+        <div class="gate-card">
+          <span class="gate-ring" aria-hidden="true">
+            <svg viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="28"></circle>
+              <circle cx="32" cy="32" r="28"></circle>
+            </svg>
+            <b>2</b>
+          </span>
+          <p>
+            <strong>Scroll rustig omhoog</strong>
+            De berg klimt met je mee. Je kunt zo beginnen.
+          </p>
+          <span class="gate-mouse" aria-hidden="true"></span>
+        </div>
       </div>
     </div>
   </div>

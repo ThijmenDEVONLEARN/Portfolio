@@ -5,6 +5,11 @@
   --acc: #ff7a3d;
   --on-acc: #1a0f08;
   --bg: #0d1430;
+  --scrim: rgb(8 10 20 / 0.72);
+  --panel: #ffffff;
+  --panel-ink: #0d1430;
+  --panel-muted: rgb(13 20 48 / 0.72);
+  --line: rgb(13 20 48 / 0.14);
   color-scheme: dark;
 }
 * {
@@ -34,23 +39,9 @@ body {
   height: calc(100vh + var(--run));
   position: relative;
 }
-/* every small scroll glides to the next stop on the path */
+/* the inner pages pad anchors for their sticky bar; the home page sits flush */
 :root {
-  scroll-snap-type: y mandatory;
-  /* the inner pages pad anchors for their sticky bar; the stops here sit flush */
   scroll-padding-top: 0;
-}
-.snaps i {
-  position: absolute;
-  left: 0;
-  top: calc(var(--k) * var(--run));
-  width: 1px;
-  height: 1px;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-.home-intro {
-  scroll-snap-align: start;
 }
 .stage {
   position: sticky;
@@ -66,7 +57,6 @@ body {
   height: 100%;
   object-fit: cover;
 }
-#gl,
 #seq {
   position: absolute;
   inset: 0;
@@ -76,9 +66,29 @@ body {
   opacity: 0;
   transition: opacity 0.4s;
 }
-.gl-on #gl,
 .gl-on #seq {
   opacity: 1;
+}
+/* the two climb videos (forward and backward) and, on top at rest, the sharp still of the stop */
+#seq > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#seq video {
+  visibility: hidden;
+}
+#seq video.on {
+  visibility: visible;
+}
+#seq img {
+  z-index: 1;
+  visibility: hidden;
+}
+#seq img.on {
+  visibility: visible;
 }
 /* the stills lean a little with the pointer (frames.js sets --px and --py) */
 .poster img,
@@ -87,21 +97,6 @@ body {
   transition:
     opacity 0.4s,
     transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.fallback {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(#24365e, #e8a070 70%, #3f5a2c 70%);
-  display: none;
-}
-.fallback svg {
-  position: absolute;
-  inset: auto 0 0;
-  width: 100%;
-  height: 70%;
-}
-.no3d .fallback {
-  display: block;
 }
 .shade {
   position: absolute;
@@ -231,9 +226,23 @@ body {
     background 0.3s,
     border-color 0.3s;
 }
-.steps a.on i {
+.steps i {
+  position: relative;
+}
+/* the fill grows with the climb: --f is 0 to 1 (frames.js); without it a dot is empty, or full once reached */
+.steps i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
   background: var(--acc);
+  transform: scale(var(--f, 0));
+}
+.steps a.on i {
   border-color: var(--acc);
+}
+.steps a.on i::after {
+  transform: scale(var(--f, 1));
 }
 .steps a.now i {
   transform: scale(1.6);
@@ -283,6 +292,127 @@ body {
     monospace;
   color: var(--muted);
   transition: opacity 0.4s;
+}
+/* the notice before the climb: a ring that runs out in the two seconds scrolling waits */
+.gate {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: end center;
+  padding: 22px 22px calc(96px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--scrim), transparent 70%);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.4s,
+    visibility 0.4s;
+}
+.gate.on {
+  opacity: 1;
+  visibility: visible;
+}
+.gate-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  max-width: 480px;
+  padding: 16px 28px 16px 16px;
+  box-shadow: 0 18px 50px var(--scrim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--panel-ink);
+  transform: translateY(16px) scale(0.96);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.gate.on .gate-card {
+  transform: none;
+}
+.gate-ring {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--panel-ink);
+  color: var(--panel);
+}
+.gate-ring svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.gate-ring circle {
+  fill: none;
+  stroke: none;
+  stroke-width: 5;
+}
+.gate-ring circle + circle {
+  stroke: var(--acc);
+  stroke-linecap: round;
+  stroke-dasharray: 176;
+}
+.gate.on .gate-ring circle + circle {
+  animation: gate-ring 2s linear forwards;
+}
+@keyframes gate-ring {
+  to {
+    stroke-dashoffset: 176;
+  }
+}
+.gate b {
+  font:
+    800 24px/1 'Unbounded',
+    sans-serif;
+}
+.gate p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--panel-muted);
+}
+.gate strong {
+  display: block;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--panel-ink);
+}
+/* a small mouse whose wheel rolls: shows the gesture without more words */
+.gate-mouse {
+  flex: none;
+  position: relative;
+  width: 26px;
+  height: 42px;
+  border: 2px solid var(--panel-ink);
+  border-radius: 13px;
+}
+.gate-mouse::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 7px;
+  width: 4px;
+  height: 8px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--acc);
+  animation: gate-wheel 1s ease-in-out infinite;
+}
+/* a phone has no mouse, and the card needs the room */
+@media (max-width: 520px) {
+  .gate-mouse {
+    display: none;
+  }
+}
+@keyframes gate-wheel {
+  60%,
+  100% {
+    transform: translateY(12px);
+    opacity: 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   * {
