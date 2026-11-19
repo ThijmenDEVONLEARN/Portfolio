@@ -1,0 +1,47 @@
+---
+import Page from '../layouts/Page.astro';
+
+const wishes = ['Soort werk', 'Uren', 'Vanaf', 'Regio'];
+---
+
+<Page
+  title="Werk"
+  description="Thijmen is open voor werk. Wat hij zoekt en waar je verder kunt kijken."
+>
+  <div class="container">
+    <div class="head">
+      <h1>Op zoek naar een team.</h1>
+      <p class="lead">Voorlopige tekst voor werkgevers.</p>
+    </div>
+    <div class="sec work">
+      <article class="card">
+        <div class="entry__head">
+          <span>Wat ik zoek</span>
+          <span class="chip-ok">Open voor werk</span>
+        </div>
+        <dl>
+          {wishes.map((w) => (
+            <div>
+              <dt>{w}</dt>
+              <dd>
+                <span class="fill">nog invullen</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </article>
+      <div class="see">
+        <h2 class="visually-hidden">Bekijk eerst</h2>
+        <a href="/over-mij/skills/">
+          Skills <small>wat ik kan</small>
+        </a>
+        <a href="/projecten/">
+          Projecten <small>wat ik maakte</small>
+        </a>
+        <a href="/contact/">
+          Contact <small>laten we praten</small>
+        </a>
+      </div>
+    </div>
+  </div>
+</Page>

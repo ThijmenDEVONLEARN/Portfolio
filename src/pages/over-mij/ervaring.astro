@@ -1,0 +1,42 @@
+---
+import Page from '../../layouts/Page.astro';
+
+const stops = [
+  { when: 'Nu', title: 'AI en n8n', text: 'Voorlopige tekst over wat je nu leert.' },
+  {
+    when: 'Eigen werk',
+    title: 'Open source projecten',
+    text: 'Voorlopige tekst over je eigen projecten.',
+  },
+  { when: 'Stage', title: 'Barnhoorn ICT', text: 'Voorlopige tekst over wat je deed en leerde.' },
+  {
+    when: 'Start',
+    title: 'Software Developer N4, ROC van Twente',
+    text: 'Voorlopige tekst over je opleiding.',
+  },
+];
+---
+
+<Page
+  title="Ervaring"
+  description="De klim tot nu: opleiding, stage, eigen werk en wat Thijmen nu leert."
+>
+  <div class="container">
+    <div class="head">
+      <h1>De klim tot nu.</h1>
+      <p class="lead">Van boven naar beneden: waar ik nu ben, en hoe ik hier kwam.</p>
+    </div>
+    <ol class="sec stops ruled" reversed>
+      {stops.map((s) => (
+        <li>
+          <span class="shape" aria-hidden="true" />
+          <span class="when">{s.when}</span>
+          <div>
+            <h2>{s.title}</h2>
+            <p class="muted">{s.text}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  </div>
+</Page>

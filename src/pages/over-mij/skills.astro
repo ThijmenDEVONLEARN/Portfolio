@@ -1,0 +1,38 @@
+---
+import Page from '../../layouts/Page.astro';
+
+const levels = [
+  { name: 'Dagelijks', filled: 3, tags: ['HTML', 'CSS', 'JavaScript', 'Git'] },
+  { name: 'Kan ik mee werken', filled: 2, tags: ['Astro', 'Node.js', 'SQL', 'C#'] },
+  { name: 'Aan het leren', filled: 1, tags: ['n8n', 'three.js', 'Python'] },
+];
+---
+
+<Page title="Skills" description="Wat Thijmen kan, eerlijk ingedeeld in drie niveaus.">
+  <div class="container">
+    <div class="head">
+      <h1>Wat ik kan.</h1>
+      <p class="lead">Eerlijk ingedeeld in drie niveaus. Geen procenten, want die zeggen niets.</p>
+    </div>
+    <ul class="sec levels ruled">
+      {levels.map((l) => (
+        <li>
+          <h2>
+            <span class="meter" aria-hidden="true">
+              {[1, 2, 3].map((n) => (
+                <b class={n <= l.filled ? 'f' : undefined} />
+              ))}
+            </span>
+            {l.name}
+          </h2>
+          <ul class="tags">
+            {l.tags.map((t) => (
+              <li>{t}</li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+    <p class="muted small note-fill">Voorbeeldvulling. De echte lijst vul je later in.</p>
+  </div>
+</Page>

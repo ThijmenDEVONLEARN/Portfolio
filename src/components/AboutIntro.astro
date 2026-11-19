@@ -1,0 +1,84 @@
+---
+// The About intro: contour map hero, the short facts and the values.
+// Used on /over-mij/ and directly under the mountain on the home page.
+import SurveyMap from './SurveyMap.astro';
+import '../styles/tokens.css';
+import '../styles/base.css';
+import '../styles/site.css';
+
+interface Props {
+  // h2 on the home page, where "Thijmen." is the page's h1
+  heading?: 'h1' | 'h2';
+}
+const { heading = 'h1' } = Astro.props;
+const Heading = heading;
+---
+
+<section class="hero" aria-labelledby="h-over">
+  <SurveyMap />
+  <div class="container hero__text">
+    <Heading class="display" id="h-over">
+      Elke dag een stukje beter.
+    </Heading>
+    <p class="lead">Voorlopige intro: wie je bent en wat je drijft, in je eigen woorden.</p>
+    <div class="actions">
+      <a class="btn btn--primary" href="/projecten/">
+        Bekijk mijn projecten
+      </a>
+      <a class="btn" href="/over-mij/ervaring/">
+        Hoe ik hier kwam
+      </a>
+    </div>
+  </div>
+</section>
+
+<div class="container">
+  <section class="sec about">
+    <figure
+      class="portrait"
+      data-slot="foto"
+      data-alt="Foto van Thijmen, staand, halflichaam"
+    ></figure>
+    <div>
+      <h2 class="sec-head">In het kort</h2>
+      <dl class="facts ruled">
+        <div>
+          <dt>Opleiding</dt>
+          <dd>Software Developer N4, ROC van Twente</dd>
+        </div>
+        <div id="stage">
+          <dt>Stage</dt>
+          <dd>Barnhoorn ICT</dd>
+        </div>
+        <div>
+          <dt>Bouwt</dt>
+          <dd>Websites en n8n-automatiseringen</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>
+            <span class="chip-ok">Open voor werk</span>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="sec--l">
+    <h2 class="sec-head">Waar ik voor sta</h2>
+    <ul class="values ruled">
+      <li>
+        <h3>Doorzetten</h3>
+        <p class="muted">Voorlopige tekst over doorzetten.</p>
+      </li>
+      <li>
+        <h3>Discipline</h3>
+        <p class="muted">Voorlopige tekst over niet uitstellen.</p>
+      </li>
+      <li>
+        <h3>Vooruit kijken</h3>
+        <p class="muted">Voorlopige tekst over elke dag beter worden.</p>
+      </li>
+    </ul>
+  </section>
+</div>

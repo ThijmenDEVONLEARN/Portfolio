@@ -1,0 +1,105 @@
+---
+import Page from '../layouts/Page.astro';
+
+const topics = [
+  ['website', 'Website'],
+  ['automatisering', 'Automatisering'],
+  ['werk', 'Werk'],
+  ['anders', 'Iets anders'],
+];
+---
+
+<Page
+  title="Contact"
+  description="Stuur Thijmen een bericht over een website, automatisering of werk."
+>
+  <div class="container">
+    <div class="head">
+      <h1>Wat gaan we bouwen?</h1>
+      <p class="lead">Stuur een bericht. Ik reageer meestal binnen een paar dagen.</p>
+    </div>
+    <div class="sec ct">
+      <!-- data-endpoint stays empty until the form is wired to a mail service with Turnstile -->
+      <form id="form" data-endpoint="" novalidate>
+        <fieldset>
+          <legend>Waar gaat het over?</legend>
+          <div class="chips">
+            {topics.map(([value, label], i) => (
+              <label>
+                <input type="radio" name="onderwerp" value={value} checked={i === 0} />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <div class="field">
+          <label for="naam">Naam</label>
+          <input id="naam" name="naam" autocomplete="name" required />
+        </div>
+        <div class="field">
+          <label for="mail">E-mail</label>
+          <input id="mail" name="mail" type="email" autocomplete="email" required />
+        </div>
+        <div class="field">
+          <label for="bericht">Bericht</label>
+          <textarea id="bericht" name="bericht" required></textarea>
+        </div>
+        <div class="actions">
+          <button class="btn btn--primary" type="submit">
+            Verstuur bericht
+          </button>
+        </div>
+        <p class="help" id="sent" aria-live="polite"></p>
+      </form>
+      <ul class="side">
+        <li>
+          <a href="https://github.com/ThijmenDEVONLEARN">
+            GitHub <small>ThijmenDEVONLEARN</small>
+          </a>
+        </li>
+        <li>
+          <div>
+            LinkedIn <small>link volgt</small>
+          </div>
+        </li>
+        <li>
+          <div>
+            Spambeveiliging <small>Cloudflare Turnstile</small>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</Page>
+
+<script>
+  const form = document.getElementById('form') as HTMLFormElement;
+  const help = document.getElementById('sent')!;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const bad = [
+      ...form.querySelectorAll<HTMLInputElement>('input[required], textarea[required]'),
+    ].filter((f) => {
+      const ok = f.checkValidity();
+      f.toggleAttribute('aria-invalid', !ok);
+      return !ok;
+    });
+    if (bad.length) {
+      help.textContent = 'Vul je naam, een geldig e-mailadres en je bericht in.';
+      bad[0].focus();
+      return;
+    }
+    if (!form.dataset.endpoint) {
+      help.textContent = 'Er is niets verstuurd: dit formulier is nog niet gekoppeld.';
+      return;
+    }
+    try {
+      const r = await fetch(form.dataset.endpoint, { method: 'POST', body: new FormData(form) });
+      help.textContent = r.ok
+        ? 'Bericht verstuurd. Ik reageer binnen een paar dagen.'
+        : 'Dat ging niet goed. Probeer het zo nog eens.';
+    } catch {
+      help.textContent = 'Dat ging niet goed. Probeer het zo nog eens.';
+    }
+  });
+</script>

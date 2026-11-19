@@ -1,0 +1,84 @@
+---
+// The climb so far, drawn as a contour map of a hill seen from above. Each stop is a pin;
+// the open one shows its notebook entry. Pin positions are percentages of the map.
+const stops = [
+  {
+    kind: 'Start',
+    shape: 'disc',
+    x: 52,
+    y: 90,
+    title: 'Software Developer N4, ROC van Twente',
+    text: 'Voorlopige tekst over je opleiding.',
+  },
+  {
+    kind: 'Stage',
+    shape: 'diamond',
+    x: 56,
+    y: 72,
+    title: 'Barnhoorn ICT',
+    text: 'Voorlopige tekst over wat je deed en leerde.',
+  },
+  {
+    kind: 'Eigen werk',
+    shape: 'tri',
+    x: 59,
+    y: 56,
+    title: 'Open source projecten',
+    text: 'Voorlopige tekst over je eigen projecten.',
+  },
+  {
+    kind: 'Nu',
+    shape: 'disc',
+    x: 64,
+    y: 40,
+    title: 'AI en n8n',
+    text: 'Voorlopige tekst over wat je nu leert.',
+  },
+];
+const last = stops.length - 1;
+---
+
+<div class="map" id="map" data-stops={JSON.stringify(stops)}>
+  <canvas
+    id="survey"
+    class="survey-map"
+    role="img"
+    aria-label="Hoogtelijnenkaart van mijn klim: start, stage, eigen werk en nu, op weg naar de top"
+  ></canvas>
+  {stops.map((s, i) => (
+    <button
+      class={`pin pin--${s.shape}`}
+      style={`--x:${s.x}%;--y:${s.y}%;--n:${i}`}
+      data-e={i}
+      aria-pressed={String(i === last)}
+    >
+      <i />
+      <span>{s.kind}</span>
+    </button>
+  ))}
+  <article class="entry" aria-live="polite">
+    <div class="entry__head">
+      <span id="e-kind">{stops[last].kind}</span>
+      <span id="e-step">
+        {stops.length} van {stops.length}
+      </span>
+    </div>
+    <div class="entry__body">
+      <h2 id="e-title">{stops[last].title}</h2>
+      <p id="e-text">{stops[last].text}</p>
+    </div>
+    <div class="entry__keys">
+      <button type="button" id="e-prev">
+        Vorige stop
+      </button>
+      <button type="button" id="e-next">
+        Volgende stop
+      </button>
+    </div>
+  </article>
+</div>
+
+<script>
+  import { initSurveyMap } from '../scripts/survey-map.js';
+  initSurveyMap(document.getElementById('map'));
+</script>
