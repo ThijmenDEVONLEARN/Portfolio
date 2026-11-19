@@ -47,7 +47,8 @@ body {
   position: sticky;
   top: 0;
   height: 100vh;
-  height: 100svh;
+  /* follows the phone's toolbar as it hides, so no strip of page shows under the scene */
+  height: 100dvh;
   overflow: hidden;
 }
 .poster img {
