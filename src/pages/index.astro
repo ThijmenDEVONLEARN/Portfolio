@@ -1,0 +1,82 @@
+---
+import Base from '../layouts/Base.astro';
+import '../styles/landing.css';
+const pages = [
+  ['Over mij', '/over-mij/'],
+  ['Projecten', '/projecten/'],
+  ['Diensten', '/diensten/'],
+  ['AI', '/ai/'],
+  ['Contact', '/contact/'],
+];
+---
+
+<Base title="Thijmen | websites en automatiseringen">
+  <div class="track" id="track">
+    <div class="stage">
+      <canvas id="gl" aria-hidden="true"></canvas>
+      <div class="fallback" aria-hidden="true">
+        <svg viewBox="0 0 800 400" preserveAspectRatio="xMidYMax slice">
+          <path
+            d="M0 400 L0 300 L180 250 L330 120 L420 60 L520 140 L640 110 L800 220 L800 400Z"
+            fill="#2b3a28"
+          />
+          <path d="M380 95 L420 60 L465 100 L440 96 L420 110 L400 96Z" fill="#eef2f5" />
+        </svg>
+      </div>
+      <div class="shade"></div>
+      <nav aria-label="Hoofdmenu">
+        <a class="nm" href="/">
+          Thijmen
+        </a>
+        <span class="ln">
+          <a href="/over-mij/">Over mij</a>
+          <a href="/projecten/">Projecten</a>
+          <a href="/diensten/">Diensten</a>
+          <a class="c" href="/contact/">
+            Contact
+          </a>
+        </span>
+      </nav>
+      <div class="copy">
+        <h1>
+          Thijmen<span>.</span>
+        </h1>
+        <div class="sub" id="sub"></div>
+      </div>
+      <div class="steps" id="dots" aria-hidden="true"></div>
+      <div class="hint" id="hint">
+        scroll om te klimmen ↓
+      </div>
+    </div>
+  </div>
+
+  <section class="after">
+    <div class="in">
+      <h2>Kijk verder rond.</h2>
+      <div class="pages">
+        {pages.map(([label, href]) => (
+          <a href={href}>{label}</a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <div class="picker" role="group" aria-label="Accentkleur">
+    <button data-a="oranje" aria-label="Oranje">
+      <i style="background:#ff7a3d"></i>
+    </button>
+    <button data-a="ijs" aria-label="IJsblauw">
+      <i style="background:#8fd0ff"></i>
+    </button>
+    <button data-a="amber" aria-label="Amber">
+      <i style="background:#f3b648"></i>
+    </button>
+    <button data-a="rood" aria-label="Rood">
+      <i style="background:#ff5a5f"></i>
+    </button>
+  </div>
+
+  <script>
+    import '../scripts/mountain.js';
+  </script>
+</Base>
