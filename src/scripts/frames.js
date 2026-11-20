@@ -96,9 +96,18 @@ const base = () =>
   set === 'l' && Math.max(innerWidth / 1920, innerHeight / 1080) * devicePixelRatio <= 1.1
     ? 'climb-1080'
     : 'climb';
+// iPhones ignore preload and fetch nothing until a video plays, so 'loadeddata' would never come:
+// a short muted play makes them load it
+const kick = (v) =>
+  v.play().then(
+    () => v.pause(),
+    () => {},
+  );
 const loadRev = () => {
   const v = rev;
-  if (!v.src) v.src = `/berg/${set}/${base()}-rev.mp4`;
+  if (v.src) return;
+  v.src = `/berg/${set}/${base()}-rev.mp4`;
+  kick(v);
 };
 
 let raf = 0;
@@ -196,6 +205,7 @@ function build() {
   // then at once, so that it is loaded and warm before the first scroll rather than during it
   fwd.addEventListener('canplaythrough', loadRev, { once: true });
   active = fwd;
+  kick(fwd);
   fwd.addEventListener(
     'loadeddata',
     () => {
@@ -238,12 +248,18 @@ let unlocked = false,
   reached = 0,
   lastWheel = 0;
 const atEnd = () => scrollY >= endY() - 2;
+const coarse = matchMedia('(pointer: coarse)').matches;
 const fresh = (t) => t - reached > 500; // not the same push that brought us here
 addEventListener(
   'scroll',
   () => {
     if (reduce || unlocked) return void (scrollY < endY() - 30 && (unlocked = false));
-    if (scrollY > endY()) scrollTo(0, endY());
+    if (scrollY > endY()) {
+      // iPhones ignore scrollTo while a flick is still coasting; taking the scroll away for a moment stops it
+      if (coarse) root.style.overflow = 'hidden';
+      scrollTo(0, endY());
+      if (coarse) setTimeout(() => (root.style.overflow = ''), 60);
+    }
     if (atEnd() && !reached) reached = performance.now();
     if (!atEnd()) reached = 0;
   },
