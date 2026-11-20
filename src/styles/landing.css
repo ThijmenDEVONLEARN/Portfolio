@@ -91,14 +91,6 @@ body {
 #seq img.on {
   visibility: visible;
 }
-/* the stills lean a little with the pointer (frames.js sets --px and --py) */
-.poster img,
-#seq {
-  transform: translate3d(calc(var(--px, 0) * -14px), calc(var(--py, 0) * -9px), 0) scale(1.04);
-  transition:
-    opacity 0.4s,
-    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-}
 .shade {
   position: absolute;
   inset: 0;

@@ -14,7 +14,6 @@ const STILL = ['000', '022', '066', '110', '156', '238'];
 const N = 660,
   FPS = 60;
 const seq = document.getElementById('seq');
-const stage = seq.parentElement;
 const portrait = matchMedia('(orientation: portrait)');
 const track = document.getElementById('track');
 const intro = document.querySelector('.home-intro');
@@ -294,32 +293,6 @@ addEventListener('keydown', (e) => {
 });
 // tabbing into the content below the climb must not be pushed back to the wall
 addEventListener('focusin', (e) => !track.contains(e.target) && (unlocked = true));
-
-// a slight shift with the pointer or the tilt of the phone, so the still scene feels like a place
-if (!reduce) {
-  let px = 0,
-    py = 0,
-    moved = false;
-  const lean = (x, y) => {
-    px = Math.max(-1, Math.min(1, x));
-    py = Math.max(-1, Math.min(1, y));
-    if (moved) return;
-    moved = true;
-    requestAnimationFrame(() => {
-      moved = false;
-      stage.style.setProperty('--px', px.toFixed(3));
-      stage.style.setProperty('--py', py.toFixed(3));
-    });
-  };
-  addEventListener('pointermove', (e) => {
-    if (e.pointerType === 'mouse')
-      lean((e.clientX / innerWidth) * 2 - 1, (e.clientY / innerHeight) * 2 - 1);
-  });
-  // fires without a prompt on Android; iOS asks for permission, so it simply stays still there
-  addEventListener('deviceorientation', (e) => {
-    if (e.gamma != null) lean(e.gamma / 25, (e.beta - 45) / 25);
-  });
-}
 
 build();
 
