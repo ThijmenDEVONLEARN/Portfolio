@@ -172,15 +172,8 @@ function drawMap(cv, stops) {
   c.stroke();
   c.setLineDash([]);
 
-  // fold creases and paper grain
-  c.fillStyle = tok('--color-sheet');
-  c.globalAlpha = 0.5;
-  c.fillRect(W * 0.5, 0, 1, H);
-  c.fillRect(0, H * 0.5, W, 1);
+  // paper grain
   c.fillStyle = tok('--color-ink');
-  c.globalAlpha = 0.06;
-  c.fillRect(W * 0.5 + 1, 0, 1, H);
-  c.fillRect(0, H * 0.5 + 1, W, 1);
   c.globalAlpha = 0.05;
   for (let i = 0; i < (W * H) / 90; i++) c.fillRect(rnd() * W, rnd() * H, 1, 1);
   c.globalAlpha = 1;
